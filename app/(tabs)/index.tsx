@@ -64,7 +64,7 @@ export default function LoginPage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    //backgroundColor: '#fff',
     paddingHorizontal: 24,
     justifyContent: 'center',
   },

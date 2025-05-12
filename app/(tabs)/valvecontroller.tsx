@@ -54,7 +54,7 @@ const screen = Dimensions.get('window');
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f4f7fa',
+    //backgroundColor: '#f4f7fa',
   },
   scrollContent: {
     flexGrow: 1,
