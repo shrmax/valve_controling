@@ -16,7 +16,10 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.shan06.valve_controling",
+      "permissions": ["USB_PERMISSION"],
+      "usesFeature": ["android.hardware.usb.host"]
     },
     "web": {
       "bundler": "metro",
@@ -37,6 +40,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "50568497-e31d-4984-a19f-52ea8e33aafd"
+      }
     }
   }
 }

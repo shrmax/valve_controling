@@ -1,30 +1,44 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, Switch, StyleSheet, ScrollView, Dimensions } from 'react-native';
+import { View, Text, Pressable, Switch, StyleSheet, ScrollView, Dimensions, NativeModules } from 'react-native';
+
+const { USBSerialModule } = NativeModules; // This must be defined in Android native code
 
 const ValveController = () => {
   const [valves] = useState(['A', 'B', 'C']);
-  const [valveStates, setValveStates] = useState<{[key: string]: boolean}>({});
+  const [valveStates, setValveStates] = useState<{ [key: string]: boolean }>({});
+  const [log, setLog] = useState('No commands sent yet');
+  const [response, setResponse] = useState('Waiting for response...');
+
+  const handleValveToggle = async (valve: string, state: boolean) => {
+    setValveStates(prev => ({ ...prev, [valve]: state }));
+
+    try {
+      const command = state ? `ON_${valve}` : `OFF_${valve}`;
+      setLog(`Sending: ${command}`);
+
+      const res = await USBSerialModule.sendCommand(command); // Native method
+      setResponse(`Device: ${res}`);
+    } catch (error) {
+      setResponse(`Error: ${error.message || error}`);
+    }
+  };
 
   return (
     <View style={styles.container}>
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>LoRa Valve Controller</Text>
 
-        <Pressable style={styles.connectButton} onPress={() => {}}>
+        <Pressable style={styles.connectButton} onPress={() => USBSerialModule.connect()}>
           <Text style={styles.buttonText}>🔌 Connect Device</Text>
         </Pressable>
 
-        {/* Valve Grid */}
         <View style={styles.valveGrid}>
           {valves.map((valve) => (
             <View key={valve} style={styles.valveCard}>
               <Text style={styles.valveLabel}>Valve {valve}</Text>
               <Switch
                 value={valveStates[valve] || false}
-                onValueChange={(value) => setValveStates(prev => ({ ...prev, [valve]: value }))}
+                onValueChange={(value) => handleValveToggle(valve, value)}
                 trackColor={{ false: '#767577', true: '#4CAF50' }}
                 thumbColor={valveStates[valve] ? '#f4f3f4' : '#f4f3f4'}
               />
@@ -32,16 +46,15 @@ const ValveController = () => {
           ))}
         </View>
 
-        {/* Command Logs */}
         <View style={styles.logSection}>
           <Text style={styles.logTitle}>📤 Command Sent:</Text>
           <View style={styles.logBox}>
-            <Text style={styles.logText}>No commands sent yet</Text>
+            <Text style={styles.logText}>{log}</Text>
           </View>
 
           <Text style={styles.logTitle}>📥 Device Response:</Text>
           <View style={styles.logBox}>
-            <Text style={styles.logText}>Waiting for response...</Text>
+            <Text style={styles.logText}>{response}</Text>
           </View>
         </View>
       </ScrollView>
@@ -52,22 +65,9 @@ const ValveController = () => {
 const screen = Dimensions.get('window');
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    //backgroundColor: '#f4f7fa',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    padding: 16,
-    minHeight: screen.height,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#34495e',
-    textAlign: 'center',
-    marginVertical: 20,
-  },
+  container: { flex: 1 },
+  scrollContent: { flexGrow: 1, padding: 16, minHeight: screen.height },
+  title: { fontSize: 24, fontWeight: 'bold', color: '#34495e', textAlign: 'center', marginVertical: 20 },
   connectButton: {
     backgroundColor: '#d3d3d3',
     padding: 15,
@@ -76,10 +76,7 @@ const styles = StyleSheet.create({
     marginVertical: 10,
     width: '100%',
   },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
+  buttonText: { fontSize: 16, fontWeight: '500' },
   valveGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -88,7 +85,7 @@ const styles = StyleSheet.create({
     marginVertical: 20,
   },
   valveCard: {
-    width: (screen.width - 48) / 3, // 3 items with 16px gap
+    width: (screen.width - 48) / 3,
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
@@ -101,22 +98,9 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     margin: 4,
   },
-  valveLabel: {
-    fontWeight: '600',
-    color: '#2c3e50',
-    fontSize: 16,
-    marginBottom: 8,
-  },
-  logSection: {
-    width: '100%',
-    marginVertical: 20,
-  },
-  logTitle: {
-    fontWeight: 'bold',
-    fontSize: 16,
-    color: '#34495e',
-    marginBottom: 8,
-  },
+  valveLabel: { fontWeight: '600', color: '#2c3e50', fontSize: 16, marginBottom: 8 },
+  logSection: { width: '100%', marginVertical: 20 },
+  logTitle: { fontWeight: 'bold', fontSize: 16, color: '#34495e', marginBottom: 8 },
   logBox: {
     backgroundColor: '#fff',
     borderRadius: 8,
@@ -129,10 +113,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  logText: {
-    color: '#4a5568',
-    fontSize: 14,
-  },
+  logText: { color: '#4a5568', fontSize: 14 },
 });
 
 export default ValveController;
