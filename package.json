@@ -39,7 +39,7 @@
     "react-native-web": "~0.20.0",
     "react-native-webview": "13.13.5",
     "expo-dev-client": "~5.1.8",
-    "undefined": "https://github.com/hedgerh/react-native-usb-serial.git"
+    "@react-native-picker/picker": "2.11.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

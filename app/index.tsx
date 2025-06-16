@@ -10,11 +10,20 @@ import {
   StyleSheet,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useRouter } from 'expo-router';
+import { useColorScheme } from '@/hooks/useColorScheme';
 
 export default function LoginPage() {
   const [emailOrPhone, setEmailOrPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const theme= useColorScheme();
+  const router = useRouter();
+
+  const handleLogin = () => {
+    
+    router .replace('/(tabs)/valvecontroller');
+  };
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
@@ -26,7 +35,9 @@ export default function LoginPage() {
 
       {/* Email or Phone Input */}
       <TextInput
-        style={styles.input}
+        style={[styles.input,
+          {color: theme === 'dark' ? '#fff' : '#000'}
+        ]}
         placeholder="Email or Phone Number"
         placeholderTextColor="#999"
         value={emailOrPhone}
@@ -37,7 +48,9 @@ export default function LoginPage() {
       {/* Password Input with Eye Icon */}
       <View style={styles.passwordContainer}>
         <TextInput
-          style={styles.passwordInput}
+          style={[styles.passwordInput,
+            {color: theme === 'dark' ? '#fff' : '#000'}
+          ]}
           placeholder="Password"
           placeholderTextColor="#999"
           secureTextEntry={!showPassword}
@@ -54,7 +67,7 @@ export default function LoginPage() {
       </View>
 
       {/* Login Button */}
-      <TouchableOpacity style={styles.button}>
+      <TouchableOpacity style={styles.button} onPress={handleLogin}>
         <Text style={styles.buttonText}>Sign In</Text>
       </TouchableOpacity>
     </SafeAreaView>
@@ -65,7 +78,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     //backgroundColor: '#fff',
-    paddingHorizontal: 24,
+    paddingHorizontal: 25,
     justifyContent: 'center',
   },
   title: {
@@ -80,10 +93,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 17,
     fontSize: 16,
     marginBottom: 20,
-    color: '#000',
+   
   },
   passwordContainer: {
     flexDirection: 'row',

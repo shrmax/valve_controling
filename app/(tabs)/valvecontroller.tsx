@@ -1,4 +1,7 @@
 import React, { useState } from 'react';
+import { ToastAndroid } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
+
 import {
   Alert,
   Dimensions,
@@ -14,7 +17,14 @@ import {
 const { UsbSerialModule } = NativeModules;
 
 const ValveController = () => {
-  const [valves] = useState<string[]>(['A', 'B', 'C']);
+  const zoneMap: Record<string, string[]> = {
+  Ganapathi: ['E', 'F', 'H', 'Q', 'M', 'N'],
+  Srinivas: ['A', 'B', 'C', 'P', 'Q', 'R'],
+};
+
+const [selectedZone, setSelectedZone] = useState('Ganapathi');
+const valves = zoneMap[selectedZone];
+
   const [valveStates, setValveStates] = useState<Record<string, boolean>>({});
   const [log, setLog] = useState('No commands sent yet');  
   const [response, setResponse] = useState('Waiting for response...');
@@ -22,7 +32,15 @@ const ValveController = () => {
   const connectDevice = async () => {
     if (!UsbSerialModule?.connect) {
       Alert.alert('Error', 'USB Serial Module is not available');
+      ToastAndroid.showWithGravityAndOffset(
+  'USB Serial Module is not available',
+  ToastAndroid.LONG,
+  ToastAndroid.CENTER,
+  0,
+  80
+);
       return;
+      
     }
 
     try {
@@ -36,7 +54,7 @@ const ValveController = () => {
   };
 
   const handleValveToggle = async (valve: string, state:boolean) => {
-    const command = state ? `ON_${valve}` : valve.toLowerCase();
+    const command = state ? valve : valve.toLowerCase();
     setValveStates(prev => ({ ...prev, [valve]: state }));
     setLog(`Sending: ${command}`);
 
@@ -52,16 +70,40 @@ const ValveController = () => {
       console.error('Send failed:', error);
       setResponse(`Error: ${error?.message || error}`);
     }
+    ToastAndroid.showWithGravityAndOffset(
+  `Valve ${valve} turned ${state ? 'ON' : 'OFF'}`,
+  ToastAndroid.LONG,
+  ToastAndroid.BOTTOM,
+  0,
+  100
+);
   };
 
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>LoRa Valve Controller</Text>
+        <Text style={styles.title}>Quadra Valve Controller</Text>
 
         <Pressable style={styles.connectButton} onPress={connectDevice}>
           <Text style={styles.buttonText}>🔌 Connect Device</Text>
         </Pressable>
+        <View style={styles.pickerWrapper}>
+  <Text style={styles.dropdownLabel}>Select Zone:</Text>
+  <View style={styles.pickerContainer}>
+    <Picker
+      selectedValue={selectedZone}
+      onValueChange={(itemValue) => setSelectedZone(itemValue)}
+      style={{ color: '#000',height: 50 }}
+      mode='dropdown'
+      dropdownIconColor="#000"
+    >
+      {Object.keys(zoneMap).map((zone) => (
+        <Picker.Item label={zone} value={zone} key={zone} />
+      ))}
+    </Picker>
+  </View>
+</View>
+
 
         <View style={styles.valveGrid}>
           {valves.map(valve => (
@@ -101,7 +143,8 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#34495e',
+    // color: '#34495e',
+    color: 'rgb(34, 104, 173)',
     textAlign: 'center',
     marginVertical: 20,
   },
@@ -152,6 +195,27 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   logText: { color: '#4a5568', fontSize: 14 },
+ pickerWrapper: {
+    backgroundColor: '#f1f5f9',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginBottom: 20,
+    marginTop: 10,
+  },
+  dropdownLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 4,
+    color: '#2c3e50',
+  },
+  pickerContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+  }
+
 });
 
 export default ValveController;
