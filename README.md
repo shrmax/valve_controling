@@ -1,50 +1,96 @@
-# Welcome to your Expo app 👋
+# 🚀 Valve Controller App (Expo Dev Client)
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+This is a custom [Expo](https://expo.dev) project created using [`create-expo-app`](https://www.npmjs.com/package/create-expo-app) and migrated to use the **Expo Dev Client** for native module support.
 
-## Get started
+> 🔧 Built for controlling valves via USB serial using STM32 and LoRa technology.
 
-1. Install dependencies
+---
 
-   ```bash
-   npm install
-   ```
+## 📦 Getting Started
 
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+### 1. Install dependencies
 
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### 2. Run the development build
 
-## Learn more
+This project uses a **custom Expo Dev Client** to support native modules like `usb-serial-for-android`.
 
-To learn more about developing your project with Expo, look at the following resources:
+```bash
+npx expo start --dev-client
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+> Make sure you have the custom dev client installed on your device.
 
-## Join the community
+---
 
-Join our community of developers creating universal apps.
+## 💠 Native Modules Used
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+* `usb-serial-for-android`: Native USB communication with STM32.
+* Custom Kotlin module for serial communication integrated into the app.
+
+> ⚠️ Expo Go will not work. This project **must be run with Expo Dev Client**.
+
+---
+
+## 📱 Running on Device or Emulator
+
+To run on a physical Android device with native features:
+
+```bash
+npx expo run:android
+```
+
+To open on an emulator:
+
+```bash
+npx expo run:android --variant devClientDebug
+```
+
+Ensure:
+
+* USB debugging is enabled.
+* You’ve accepted permissions for USB device access.
+
+---
+
+## 📁 Project Structure
+
+```
+/app              → All screens & routes (uses Expo Router)
+/android          → Native Android configuration
+/ios              → (If applicable)
+/usb              → Custom native module (Kotlin) for USB Serial
+```
+
+---
+
+## 🔍 Troubleshooting
+
+* **USB Permission Denied**: Ensure you’ve declared proper permissions in `AndroidManifest.xml`.
+* **Build errors**: Make sure you're using Java 17+ and the correct Gradle version.
+* **Expo Go fallback**: Not supported due to native modules.
+
+---
+
+## 📚 Resources
+
+* [Expo Dev Client](https://docs.expo.dev/clients/introduction/)
+* [Custom Native Modules](https://docs.expo.dev/modules/intro/)
+* [usb-serial-for-android GitHub](https://github.com/mik3y/usb-serial-for-android)
+* [STM32 USB CDC](https://www.st.com/en/embedded-software/stm32cubefw.html)
+
+---
+
+## 🧑‍💻 Contributors
+
+* **Developers:** Shravan K, Rakshith R Poojary, Dinesh Raj Upadhya, Shetty Nimesh, Nishant U
+* **Organization:** Ukshati Technologies
+
+---
+
+## 📝 License
+
+This project is for internal internship and academic purposes.
