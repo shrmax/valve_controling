@@ -83,7 +83,13 @@ class UsbSerialModule(private val reactContext: ReactApplicationContext) :
 
             serialPort = driver.ports[0].apply {
                 open(connection)
-                setParameters(9600, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE)
+    setParameters(9600, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE)
+
+    // 💡 Clear the buffer after opening
+    val buffer = ByteArray(64)
+    while (read(buffer, 100) > 0) {
+        // Just clearing leftover data, do nothing with it
+    }
             }
 
             promise.resolve("Connected to ${device.deviceName}")
@@ -124,25 +130,46 @@ class UsbSerialModule(private val reactContext: ReactApplicationContext) :
     }
 
     @ReactMethod
-    fun sendCommand(command: String, promise: Promise) {
-        try {
-            val port = serialPort
-            if (port == null) {
-                promise.reject("PORT_NULL", "Serial port is not connected.")
-                return
-            }
+@ReactMethod
+fun sendCommand(command: String, promise: Promise) {
+    val port = serialPort
+if (port == null) {
+    promise.reject("PORT_NULL", "Serial port is not connected.")
+    return
+}
 
-            val data = command.toByteArray()
-            port.write(data, 1000)
+// Flush stale data before sending new command
+val flushBuffer = ByteArray(64)
+while (port.read(flushBuffer, 100) > 0) {}
 
-            val buffer = ByteArray(64)
-            val length = port.read(buffer, 1000)
-            val response = String(buffer, 0, length)
+// Write command
+val data = command.toByteArray()
+port.write(data, 1000)
 
-            promise.resolve(response)
-        } catch (e: Exception) {
-            Log.e("UsbSerialModule", "Send command failed", e)
-            promise.reject("SEND_ERROR", "Failed to send command: ${e.localizedMessage}", e)
-        }
+// Optional small delay to allow response
+Thread.sleep(100)
+
+val buffer = ByteArray(64)
+var ack = ""
+val startTime = System.currentTimeMillis()
+val timeout = 7000L
+
+while (System.currentTimeMillis() - startTime < timeout) {
+    val length = port.read(buffer, 500)
+    if (length > 0) {
+        ack = buffer.copyOfRange(0, length).joinToString(" ") { "%02X".format(it) }.trim()
+        if (ack.isNotEmpty()) break
     }
+    Thread.sleep(100)
+}
+
+if (ack.isNotEmpty()) {
+    promise.resolve(ack)
+} else {
+    promise.reject("NO_RESPONSE", "No acknowledgment received from node within timeout.")
+}
+
+}
+
+
 }

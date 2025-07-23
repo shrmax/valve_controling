@@ -24,10 +24,19 @@ const ValveController = () => {
 
 const [selectedZone, setSelectedZone] = useState('Ganapathi');
 const valves = zoneMap[selectedZone];
+const flowData = [
+  { valve: 'E', status: 'ON', reading: '2.4' },
+  { valve: 'F', status: 'OFF', reading: '0.0' },
+  { valve: 'Q', status: 'ON', reading: '3.1' },
+];
+
 
   const [valveStates, setValveStates] = useState<Record<string, boolean>>({});
-  const [log, setLog] = useState('No commands sent yet');  
-  const [response, setResponse] = useState('Waiting for response...');
+  // const [log, setLog] = useState('No commands sent yet');  
+  // const [response, setResponse] = useState('Waiting for response...');
+  const [logs, setLogs] = useState<string[]>([
+]);
+
 
   const connectDevice = async () => {
     if (!UsbSerialModule?.connect) {
@@ -46,17 +55,20 @@ const valves = zoneMap[selectedZone];
     try {
       const result = await UsbSerialModule.connect();
       console.log('✅ USB Connected:', result);
-      setResponse(`Connected: ${result}`);
+      setLogs(prevLogs => [ `Connected: ${result}`, ...prevLogs]);
     } catch (err) {
       console.error('❌ USB Connection failed:', err);
-      setResponse(`Connection failed: ${err?.message || err}`);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setLogs(prevLogs => [ `Connection failed: ${errorMessage}`, ...prevLogs]);
     }
+    await new Promise(res => setTimeout(res, 300)); // allow slave to stabilize
+
   };
 
   const handleValveToggle = async (valve: string, state:boolean) => {
     const command = state ? valve : valve.toLowerCase();
     setValveStates(prev => ({ ...prev, [valve]: state }));
-    setLog(`Sending: ${command}`);
+      setLogs(prev => [`📤 Sent ${command}`, ...prev]);
 
     if (!UsbSerialModule?.sendCommand) {
       Alert.alert('Error', 'sendCommand not available on UsbSerialModule');
@@ -65,10 +77,15 @@ const valves = zoneMap[selectedZone];
 
     try {
       const res = await UsbSerialModule.sendCommand(command);
-      setResponse(`Device: ${res}`);
-    } catch (error) {
+      await new Promise(res => setTimeout(res, 5000)); // Simulate delay for better UX
+      console.log('Raw response:', res);
+      setLogs(prev => [`📥 Response: ${res.toString().trim()}`, ...prev]);
+      
+    } catch (error) { 
       console.error('Send failed:', error);
-      setResponse(`Error: ${error?.message || error}`);
+
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setLogs(prev => [`❌ ${String(errorMessage)}`, ...prev]);
     }
     ToastAndroid.showWithGravityAndOffset(
   `Valve ${valve} turned ${state ? 'ON' : 'OFF'}`,
@@ -118,18 +135,39 @@ const valves = zoneMap[selectedZone];
             </View>
           ))}
         </View>
+        {/* After valve grid */}
 
-        <View style={styles.logSection}>
-          <Text style={styles.logTitle}>📤 Command Sent:</Text>
-          <View style={styles.logBox}>
-            <Text style={styles.logText}>{log}</Text>
-          </View>
+        <Text style={styles.sectionTitle}>💧 Flow Meter Readings</Text>
+<View style={styles.flowMeterContainer}>
+  <View style={styles.flowHeader}>
+    <Text style={styles.flowHeaderText}>Valve</Text>
+    <Text style={styles.flowHeaderText}>Status</Text>
+    <Text style={styles.flowHeaderText}>Reading (L/min)</Text>
+  </View>
 
-          <Text style={styles.logTitle}>📥 Device Response:</Text>
-          <View style={styles.logBox}>
-            <Text style={styles.logText}>{response}</Text>
-          </View>
-        </View>
+  <ScrollView style={styles.flowScroll} nestedScrollEnabled>
+    {flowData.map((item, idx) => (
+      <View key={idx} style={styles.flowRow}>
+        <Text style={styles.flowCell}>{item.valve}</Text>
+        <Text style={styles.flowCell}>{item.status}</Text>
+        <Text style={styles.flowCell}>{item.reading}</Text>
+      </View>
+    ))}
+  </ScrollView>
+</View>
+
+<Text style={styles.logTitle}>📝Command Logs:</Text>
+       <View style={styles.logBox}>
+  <ScrollView  nestedScrollEnabled   // ✅ lets this ScrollView handle its own vertical drag on Android
+    automaticallyAdjustKeyboardInsets={true}
+    showsVerticalScrollIndicator={true}
+    scrollEventThrottle={16}>
+    {logs.map((line, idx) => (
+      <Text key={idx} style={styles.logText}>{line}</Text>
+    ))}
+  </ScrollView>
+</View>
+
       </ScrollView>
     </View>
   );
@@ -183,18 +221,25 @@ const styles = StyleSheet.create({
   logTitle: {
     fontWeight: 'bold',
     fontSize: 16,
-    color: '#34495e',
+    color: 'rgb(34, 104, 173)',
     marginBottom: 8,
   },
   logBox: {
     backgroundColor: '#fff',
     borderRadius: 8,
     padding: 12,
-    minHeight: 100,
+    maxHeight: 200,
     marginBottom: 20,
     elevation: 2,
+    height: 180, // Fixed height
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-  logText: { color: '#4a5568', fontSize: 14 },
+  logText: { color: '#4a5568',
+     fontSize: 14,
+     marginBottom: 8,},
  pickerWrapper: {
     backgroundColor: '#f1f5f9',
     borderRadius: 8,
@@ -214,7 +259,56 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     borderWidth: 1,
     borderColor: '#d1d5db',
-  }
+  },
+  flowMeterContainer: {
+  backgroundColor: '#f9fafb',
+  borderRadius: 10,
+  padding: 12,
+  marginBottom: 20,
+  elevation: 2,
+},
+
+sectionTitle: {
+  fontSize: 16,
+  fontWeight: '600',
+  marginBottom: 10,
+  color: 'rgb(34, 104, 173)',
+},
+
+flowHeader: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  marginBottom: 6,
+  borderBottomWidth: 1,
+  borderColor: '#d1d5db',
+  paddingBottom: 4,
+},
+
+flowHeaderText: {
+  fontSize: 14,
+  fontWeight: 'bold',
+  flex: 1,
+  textAlign: 'center',
+  color: '#4b5563',
+},
+
+flowScroll: {
+  maxHeight: 160,
+},
+
+flowRow: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  marginBottom: 6,
+},
+
+flowCell: {
+  flex: 1,
+  textAlign: 'center',
+  color: '#374151',
+  fontSize: 13,
+},
+
 
 });
 
