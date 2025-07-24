@@ -139,24 +139,24 @@ fun sendCommand(command: String, promise: Promise) {
     }
 
     try {
-        // Flush stale data before sending a new command
-        val flushBuffer = ByteArray(256)
-        while (port.read(flushBuffer, 200) > 0) {
-            // Discard stale data
+        // Clear the buffer before sending the command
+        val buffer = ByteArray(256)
+        while (port.read(buffer, 200) > 0) {
+            // Discard any stale data
         }
 
         // Write the command
         val data = command.toByteArray()
         port.write(data, 2000)
 
-        // Read data for 5 seconds
+        // Read the response
         val responseBuffer = StringBuilder()
-        val buffer = ByteArray(256)
         val startTime = System.currentTimeMillis()
-        val duration = 5000L // 5-second duration
+        val timeout = 5000L // 5-second timeout
 
-        while (System.currentTimeMillis() - startTime < duration) {
-            val bytesRead = port.read(buffer, 200)
+        var bytesRead: Int
+        while (System.currentTimeMillis() - startTime < timeout) {
+            bytesRead = port.read(buffer, 200)
             if (bytesRead > 0) {
                 val chunk = String(buffer, 0, bytesRead)
                 responseBuffer.append(chunk)
@@ -169,7 +169,7 @@ fun sendCommand(command: String, promise: Promise) {
         if (response.isNotEmpty()) {
             promise.resolve(response)
         } else {
-            promise.reject("NO_RESPONSE", "No data received from the device within the 5-second window.")
+            promise.reject("NO_RESPONSE", "No acknowledgment received from the device within the timeout period.")
         }
     } catch (e: Exception) {
         promise.reject("SEND_COMMAND_ERROR", "Failed to send command: ${e.message}", e)
