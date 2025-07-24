@@ -41,59 +41,41 @@ const flowData = [
   const connectDevice = async () => {
     if (!UsbSerialModule?.connect) {
       Alert.alert('Error', 'USB Serial Module is not available');
-      ToastAndroid.showWithGravityAndOffset(
-  'USB Serial Module is not available',
-  ToastAndroid.LONG,
-  ToastAndroid.CENTER,
-  0,
-  80
-);
       return;
-      
     }
 
     try {
       const result = await UsbSerialModule.connect();
-      console.log('✅ USB Connected:', result);
-      setLogs(prevLogs => [ `Connected: ${result}`, ...prevLogs]);
+      setLogs(prev => [`✅ Connected: ${result}`, ...prev]);
+      ToastAndroid.show('Device connected successfully', ToastAndroid.SHORT);
     } catch (err) {
-      console.error('❌ USB Connection failed:', err);
       const errorMessage = err instanceof Error ? err.message : String(err);
-      setLogs(prevLogs => [ `Connection failed: ${errorMessage}`, ...prevLogs]);
+      setLogs(prev => [`❌ Connection failed: ${errorMessage}`, ...prev]);
+      ToastAndroid.show(`Connection failed: ${errorMessage}`, ToastAndroid.LONG);
     }
-    await new Promise(res => setTimeout(res, 300)); // allow slave to stabilize
-
   };
 
-  const handleValveToggle = async (valve: string, state:boolean) => {
-    const command = state ? valve : valve.toLowerCase();
+  const handleValveToggle = async (valve: string, state: boolean) => {
+    const command = state ? valve.toUpperCase() : valve.toLowerCase();
     setValveStates(prev => ({ ...prev, [valve]: state }));
-      setLogs(prev => [`📤 Sent ${command}`, ...prev]);
+    setLogs(prev => [`📤 Sending: \`${command}\``, ...prev]);
 
     if (!UsbSerialModule?.sendCommand) {
-      Alert.alert('Error', 'sendCommand not available on UsbSerialModule');
+      Alert.alert('Error', 'sendCommand is not available on UsbSerialModule');
       return;
     }
 
     try {
-      const res = await UsbSerialModule.sendCommand(command);
-      await new Promise(res => setTimeout(res, 5000)); // Simulate delay for better UX
-      console.log('Raw response:', res);
-      setLogs(prev => [`📥 Response: ${res.toString().trim()}`, ...prev]);
-      
-    } catch (error) { 
-      console.error('Send failed:', error);
-
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      setLogs(prev => [`❌ ${String(errorMessage)}`, ...prev]);
+      const response = await UsbSerialModule.sendCommand(command);
+      setLogs(prev => [`📥 ACK: ${response.trim()}`, ...prev]);
+      ToastAndroid.show(`Valve ${valve} is ${state ? 'ON' : 'OFF'}`, ToastAndroid.SHORT);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setLogs(prev => [`❌ Error: ${errorMessage}`, ...prev]);
+      ToastAndroid.show(`Error: ${errorMessage}`, ToastAndroid.LONG);
+      // Revert state on failure
+      setValveStates(prev => ({ ...prev, [valve]: !state }));
     }
-    ToastAndroid.showWithGravityAndOffset(
-  `Valve ${valve} turned ${state ? 'ON' : 'OFF'}`,
-  ToastAndroid.LONG,
-  ToastAndroid.BOTTOM,
-  0,
-  100
-);
   };
 
   return (
