@@ -93,13 +93,13 @@ const flowData = [
   };
 
   // Start receiving data when the component mounts
-  useState(() => {
+  React.useEffect(() => {
     const interval = setInterval(() => {
       receiveData();
     }, 5000); // Poll every 5 seconds
 
     return () => clearInterval(interval);
-  });
+  }, []);
 
   return (
     <View style={styles.container}>
