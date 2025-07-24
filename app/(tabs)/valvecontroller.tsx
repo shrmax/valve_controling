@@ -41,65 +41,60 @@ const flowData = [
   const connectDevice = async () => {
     if (!UsbSerialModule?.connect) {
       Alert.alert('Error', 'USB Serial Module is not available');
+      ToastAndroid.showWithGravityAndOffset(
+  'USB Serial Module is not available',
+  ToastAndroid.LONG,
+  ToastAndroid.CENTER,
+  0,
+  80
+);
       return;
+
     }
 
     try {
       const result = await UsbSerialModule.connect();
-      setLogs(prev => [`✅ Connected: ${result}`, ...prev]);
-      ToastAndroid.show('Device connected successfully', ToastAndroid.SHORT);
+      console.log('✅ USB Connected:', result);
+      setLogs(prevLogs => [ `Connected: ${result}`, ...prevLogs]);
     } catch (err) {
+      console.error('❌ USB Connection failed:', err);
       const errorMessage = err instanceof Error ? err.message : String(err);
-      setLogs(prev => [`❌ Connection failed: ${errorMessage}`, ...prev]);
-      ToastAndroid.show(`Connection failed: ${errorMessage}`, ToastAndroid.LONG);
+      setLogs(prevLogs => [ `Connection failed: ${errorMessage}`, ...prevLogs]);
     }
+    await new Promise(res => setTimeout(res, 300)); // allow slave to stabilize
+
   };
 
-  const handleValveToggle = async (valve: string, state: boolean) => {
-    const command = state ? valve.toUpperCase() : valve.toLowerCase();
+  const handleValveToggle = async (valve: string, state:boolean) => {
+    const command = state ? valve : valve.toLowerCase();
     setValveStates(prev => ({ ...prev, [valve]: state }));
-    setLogs(prev => [`📤 Sending: \`${command}\``, ...prev]);
+      setLogs(prev => [`📤 Sent ${command}`, ...prev]);
 
     if (!UsbSerialModule?.sendCommand) {
-      Alert.alert('Error', 'sendCommand is not available on UsbSerialModule');
+      Alert.alert('Error', 'sendCommand not available on UsbSerialModule');
       return;
     }
 
     try {
-      await UsbSerialModule.sendCommand(command);
-      ToastAndroid.show(`Valve ${valve} is ${state ? 'ON' : 'OFF'}`, ToastAndroid.SHORT);
+      const res = await UsbSerialModule.sendCommand(command);
+      await new Promise(res => setTimeout(res, 5000)); // Simulate delay for better UX
+      console.log('Raw response:', res);
+      setLogs(prev => [`📥 Response: ${res.toString().trim()}`, ...prev]);
+
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setLogs(prev => [`❌ Error: ${errorMessage}`, ...prev]);
-      ToastAndroid.show(`Error: ${errorMessage}`, ToastAndroid.LONG);
-      // Revert state on failure
-      setValveStates(prev => ({ ...prev, [valve]: !state }));
+      console.error('Send failed:', error);
+
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setLogs(prev => [`❌ ${String(errorMessage)}`, ...prev]);
     }
+    ToastAndroid.showWithGravityAndOffset(
+  `Valve ${valve} turned ${state ? 'ON' : 'OFF'}`,
+  ToastAndroid.LONG,
+  ToastAndroid.BOTTOM,
+  0,
+  100
+);
   };
-
-  const receiveData = async () => {
-    if (!UsbSerialModule?.receiveCommand) {
-      Alert.alert('Error', 'receiveCommand is not available on UsbSerialModule');
-      return;
-    }
-
-    try {
-      const response = await UsbSerialModule.receiveCommand();
-      setLogs(prev => [`📥 ACK: ${response.trim()}`, ...prev]);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setLogs(prev => [`❌ Error: ${errorMessage}`, ...prev]);
-    }
-  };
-
-  // Start receiving data when the component mounts
-  React.useEffect(() => {
-    const interval = setInterval(() => {
-      receiveData();
-    }, 5000); // Poll every 5 seconds
-
-    return () => clearInterval(interval);
-  }, []);
 
   return (
     <View style={styles.container}>
