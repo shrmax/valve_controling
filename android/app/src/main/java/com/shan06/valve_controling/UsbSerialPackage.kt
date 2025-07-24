@@ -7,7 +7,9 @@ import com.facebook.react.bridge.ReactApplicationContext
 
 class UsbSerialPackage : ReactPackage {
     override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> {
-        return listOf(UsbSerialModule(reactContext))
+        val modules = mutableListOf<NativeModule>()
+        modules.add(UsbSerialModule(reactContext))
+        return modules
     }
 
     override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> {
