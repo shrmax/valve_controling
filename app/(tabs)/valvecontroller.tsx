@@ -66,8 +66,7 @@ const flowData = [
     }
 
     try {
-      const response = await UsbSerialModule.sendCommand(command);
-      setLogs(prev => [`📥 ACK: ${response.trim()}`, ...prev]);
+      await UsbSerialModule.sendCommand(command);
       ToastAndroid.show(`Valve ${valve} is ${state ? 'ON' : 'OFF'}`, ToastAndroid.SHORT);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -77,6 +76,30 @@ const flowData = [
       setValveStates(prev => ({ ...prev, [valve]: !state }));
     }
   };
+
+  const receiveData = async () => {
+    if (!UsbSerialModule?.receiveCommand) {
+      Alert.alert('Error', 'receiveCommand is not available on UsbSerialModule');
+      return;
+    }
+
+    try {
+      const response = await UsbSerialModule.receiveCommand();
+      setLogs(prev => [`📥 ACK: ${response.trim()}`, ...prev]);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setLogs(prev => [`❌ Error: ${errorMessage}`, ...prev]);
+    }
+  };
+
+  // Start receiving data when the component mounts
+  useState(() => {
+    const interval = setInterval(() => {
+      receiveData();
+    }, 5000); // Poll every 5 seconds
+
+    return () => clearInterval(interval);
+  });
 
   return (
     <View style={styles.container}>

@@ -148,12 +148,24 @@ fun sendCommand(command: String, promise: Promise) {
         // Write the command
         val data = command.toByteArray()
         port.write(data, 2000)
+        promise.resolve("Command sent successfully.")
+    } catch (e: Exception) {
+        promise.reject("SEND_COMMAND_ERROR", "Failed to send command: ${e.message}", e)
+    }
+}
 
-        // Wait for 5 seconds before reading the response
-        Thread.sleep(5000)
+@ReactMethod
+fun receiveCommand(promise: Promise) {
+    val port = serialPort
+    if (port == null) {
+        promise.reject("PORT_NULL", "Serial port is not connected.")
+        return
+    }
 
+    try {
         // Read the response
         val responseBuffer = StringBuilder()
+        val buffer = ByteArray(256)
         val startTime = System.currentTimeMillis()
         val timeout = 5000L // 5-second timeout
 
@@ -178,7 +190,7 @@ fun sendCommand(command: String, promise: Promise) {
             promise.reject("NO_RESPONSE", "No acknowledgment received from the device within the timeout period.")
         }
     } catch (e: Exception) {
-        promise.reject("SEND_COMMAND_ERROR", "Failed to send command: ${e.message}", e)
+        promise.reject("RECEIVE_COMMAND_ERROR", "Failed to receive command: ${e.message}", e)
     }
 }
 
