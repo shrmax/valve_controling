@@ -133,42 +133,52 @@ class UsbSerialModule(private val reactContext: ReactApplicationContext) :
 @ReactMethod
 fun sendCommand(command: String, promise: Promise) {
     val port = serialPort
-if (port == null) {
-    promise.reject("PORT_NULL", "Serial port is not connected.")
-    return
-}
-
-// Flush stale data before sending new command
-val flushBuffer = ByteArray(64)
-while (port.read(flushBuffer, 100) > 0) {}
-
-// Write command
-val data = command.toByteArray()
-port.write(data, 1000)
-
-// Optional small delay to allow response
-Thread.sleep(100)
-
-val buffer = ByteArray(64)
-var ack = ""
-val startTime = System.currentTimeMillis()
-val timeout = 7000L
-
-while (System.currentTimeMillis() - startTime < timeout) {
-    val length = port.read(buffer, 500)
-    if (length > 0) {
-        ack = buffer.copyOfRange(0, length).joinToString(" ") { "%02X".format(it) }.trim()
-        if (ack.isNotEmpty()) break
+    if (port == null) {
+        promise.reject("PORT_NULL", "Serial port is not connected.")
+        return
     }
-    Thread.sleep(100)
-}
 
-if (ack.isNotEmpty()) {
-    promise.resolve(ack)
-} else {
-    promise.reject("NO_RESPONSE", "No acknowledgment received from node within timeout.")
-}
+    try {
+        // Flush stale data before sending a new command
+        val flushBuffer = ByteArray(256)
+        while (port.read(flushBuffer, 200) > 0) {
+            // Discard stale data
+        }
 
+        // Write the command
+        val data = command.toByteArray()
+        port.write(data, 2000)
+
+        // Read the response
+        val responseBuffer = StringBuilder()
+        val buffer = ByteArray(256)
+        val startTime = System.currentTimeMillis()
+        val timeout = 5000L // 5-second timeout
+
+        var bytesRead: Int
+        while (System.currentTimeMillis() - startTime < timeout) {
+            bytesRead = port.read(buffer, 200)
+            if (bytesRead > 0) {
+                val chunk = String(buffer, 0, bytesRead)
+                responseBuffer.append(chunk)
+                // Assuming the response ends with a newline character
+                if (chunk.contains("\n")) {
+                    break
+                }
+            }
+            // Add a small delay to prevent busy-waiting
+            Thread.sleep(50)
+        }
+
+        val response = responseBuffer.toString().trim()
+        if (response.isNotEmpty()) {
+            promise.resolve(response)
+        } else {
+            promise.reject("NO_RESPONSE", "No acknowledgment received from the device within the timeout period.")
+        }
+    } catch (e: Exception) {
+        promise.reject("SEND_COMMAND_ERROR", "Failed to send command: ${e.message}", e)
+    }
 }
 
 
