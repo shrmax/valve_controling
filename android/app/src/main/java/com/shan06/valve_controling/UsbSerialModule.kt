@@ -149,6 +149,9 @@ fun sendCommand(command: String, promise: Promise) {
         val data = command.toByteArray()
         port.write(data, 2000)
 
+        // Wait for 5 seconds before reading the response
+        Thread.sleep(5000)
+
         // Read the response
         val responseBuffer = StringBuilder()
         val startTime = System.currentTimeMillis()
@@ -166,6 +169,9 @@ fun sendCommand(command: String, promise: Promise) {
         }
 
         val response = responseBuffer.toString().trim()
+        Log.d("UsbSerialModule", "Received data length: ${response.length}")
+        Log.d("UsbSerialModule", "Received data: $response")
+
         if (response.isNotEmpty()) {
             promise.resolve(response)
         } else {
