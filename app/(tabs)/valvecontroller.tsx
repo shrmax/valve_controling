@@ -77,11 +77,14 @@ const flowData = [
 
     try {
       const res = await UsbSerialModule.sendCommand(command);
-      await new Promise(res => setTimeout(res, 5000)); // Simulate delay for better UX
+      await new Promise(res => setTimeout(res, 5000));
+  // Simulate delay for better UX
+  if(res !== null && res !== undefined && res.toString().trim() !== '') {
       console.log('Raw response:', res);
       setLogs(prev => [`📥 Response: ${res.toString().trim()}`, ...prev]);
-
-    } catch (error) {
+      
+    } }
+    catch (error) {
       console.error('Send failed:', error);
 
       const errorMessage = error instanceof Error ? error.message : String(error);
