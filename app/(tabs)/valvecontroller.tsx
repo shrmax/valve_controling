@@ -1,6 +1,4 @@
-import React, { useState } from 'react';
-import { ToastAndroid } from 'react-native';
-
+import React, { useState, useEffect } from 'react';
 import {
   Alert,
   Dimensions,
@@ -11,12 +9,15 @@ import {
   Text,
   View,
   TextInput,
+  ToastAndroid,
 } from 'react-native';
 
 const { UsbSerialModule } = NativeModules;
 
 const ValveController = () => {
   const [logs, setLogs] = useState<string[]>([]);
+  const [isConnected, setIsConnected] = useState(false);
+  const [command, setCommand] = useState('');
 
   const connectDevice = async () => {
     if (!UsbSerialModule?.connect) {
@@ -35,46 +36,64 @@ const ValveController = () => {
       const result = await UsbSerialModule.connect();
       console.log('✅ USB Connected:', result);
       setLogs(prevLogs => [`Connected: ${result}`, ...prevLogs]);
+      setIsConnected(true); // Disable button after successful connection
     } catch (err) {
       console.error('❌ USB Connection failed:', err);
       const errorMessage = err instanceof Error ? err.message : String(err);
       setLogs(prevLogs => [`Connection failed: ${errorMessage}`, ...prevLogs]);
     }
-    await new Promise(res => setTimeout(res, 300)); // allow slave to stabilize
+
+    await new Promise(res => setTimeout(res, 300)); // wait for slave to stabilize
   };
 
-  const [command, setCommand] = useState('');
+const [isSending, setIsSending] = useState(false);
 
-  const handleSendCommand = async () => {
-    if (!command) {
-      Alert.alert('Error', 'Please enter a command');
-      return;
+const handleSendCommand = async () => {
+  if (!command || isSending) return;
+
+  setLogs(prev => [`📤 Sent: ${command}`, ...prev]);
+  console.log('Command sent:', command);
+  setIsSending(true);
+
+  try {
+    const res = await UsbSerialModule.sendCommand(command);
+    if (typeof res == 'string' && res.trim() != ''  && res !=null) {
+      
+      console.log('✅ Command recv:', res);
     }
+    // setLogs(prev => [`✅ Response: ${res}`, ...prev]);
+  } catch (error) {
+    setLogs(prev => [
+      `❌ ${
+        typeof error === 'object' && error !== null && 'message' in error
+          ? String((error as { message: unknown }).message)
+          : String(error)
+      }`,
+      ...prev,
+    ]);
+  } finally {
+    setIsSending(false);
+  }
+};
 
-    setLogs(prev => [`📤 Sent: ${command}`, ...prev]);
 
-    if (!UsbSerialModule?.sendCommand) {
-      Alert.alert('Error', 'sendCommand not available on UsbSerialModule');
-      return;
-    }
-
-    try {
-      const res = await UsbSerialModule.sendCommand(command);
-      setLogs(prev => [`📥 Response: ${res.toString().trim()}`, ...prev]);
-    } catch (error) {
-      console.error('Send failed:', error);
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      setLogs(prev => [`❌ ${String(errorMessage)}`, ...prev]);
-    }
-  };
 
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>Quadra Valve Controller</Text>
 
-        <Pressable style={styles.connectButton} onPress={connectDevice}>
-          <Text style={styles.buttonText}>🔌 Connect Device</Text>
+        <Pressable
+          style={[
+            styles.connectButton,
+            isConnected && { backgroundColor: '#aaa' },
+          ]}
+          onPress={connectDevice}
+          disabled={isConnected}
+        >
+          <Text style={styles.buttonText}>
+            {isConnected ? '🔒 Connected' : '🔌 Connect Device'}
+          </Text>
         </Pressable>
 
         <TextInput
@@ -88,12 +107,12 @@ const ValveController = () => {
           <Text style={styles.buttonText}>Send Command</Text>
         </Pressable>
 
-        <Text style={styles.logTitle}>📝Command Logs:</Text>
+        <Text style={styles.logTitle}>📝 Command Logs:</Text>
         <View style={styles.logBox}>
           <ScrollView
-            nestedScrollEnabled // ✅ lets this ScrollView handle its own vertical drag on Android
-            automaticallyAdjustKeyboardInsets={true}
-            showsVerticalScrollIndicator={true}
+            nestedScrollEnabled
+            automaticallyAdjustKeyboardInsets
+            showsVerticalScrollIndicator
             scrollEventThrottle={16}
           >
             {logs.map((line, idx) => (
@@ -159,7 +178,7 @@ const styles = StyleSheet.create({
     maxHeight: 200,
     marginBottom: 20,
     elevation: 2,
-    height: 180, // Fixed height
+    height: 180,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,

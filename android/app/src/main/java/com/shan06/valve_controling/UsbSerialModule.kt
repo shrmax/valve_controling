@@ -83,13 +83,13 @@ class UsbSerialModule(private val reactContext: ReactApplicationContext) :
 
             serialPort = driver.ports[0].apply {
                 open(connection)
-    setParameters(9600, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE)
+                setParameters(9600, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE)
 
-    // 💡 Clear the buffer after opening
-    val buffer = ByteArray(64)
-    while (read(buffer, 100) > 0) {
-        // Just clearing leftover data, do nothing with it
-    }
+                // 💡 Clear buffer after open
+                val buffer = ByteArray(64)
+                while (read(buffer, 100) > 0) {
+                    // Drain initial junk data
+                }
             }
 
             promise.resolve("Connected to ${device.deviceName}")
@@ -98,6 +98,79 @@ class UsbSerialModule(private val reactContext: ReactApplicationContext) :
             promise.reject("CONNECT_ERROR", "Error connecting to device: ${e.localizedMessage}", e)
         }
     }
+
+    @ReactMethod
+    fun disconnect(promise: Promise) {
+        try {
+            serialPort?.close()
+            serialPort = null
+            promise.resolve("Disconnected successfully")
+        } catch (e: Exception) {
+            Log.e("UsbSerialModule", "Disconnection failed", e)
+            promise.reject("DISCONNECT_ERROR", "Error disconnecting: ${e.localizedMessage}", e)
+        }
+    }
+
+    @ReactMethod
+    fun isConnected(promise: Promise) {
+        try {
+            val connected = serialPort != null
+            promise.resolve(connected)
+        } catch (e: Exception) {
+            promise.reject("CHECK_ERROR", "Error checking connection: ${e.localizedMessage}")
+        }
+    }
+
+    @ReactMethod
+@ReactMethod
+@ReactMethod
+fun sendCommand(command: String, promise: Promise) {
+    try {
+        val port = serialPort ?: run {
+            promise.reject("PORT_NULL", "Serial port is not connected.")
+            return
+        }
+
+        // Clear any old data in buffer
+        val drainBuffer = ByteArray(64)
+        while (port.read(drainBuffer, 100) > 0) {
+            // drain stale data
+        }
+
+        // Send command
+        port.write(command.toByteArray(), 1000)
+        Log.d("UsbSerialModule", "Command sent: $command")
+
+        // Wait for response
+        val buffer = ByteArray(64)
+        val startTime = System.currentTimeMillis()
+        val responseBuilder = StringBuilder()
+
+        while (System.currentTimeMillis() - startTime < 3000) {
+            val len = port.read(buffer, 200)
+            if (len > 0) {
+                val data = buffer.copyOfRange(0, len).toString(Charsets.UTF_8)
+                responseBuilder.append(data)
+
+                if (data.contains("\n") || data.contains("\r") || responseBuilder.length > 5) {
+                    break // Stop reading once a newline or sufficient data is received
+                }
+            }
+        }
+
+        val response = responseBuilder.toString().trim()
+        if (response.isNotEmpty()) {
+            Log.d("UsbSerialModule", "Response received: $response")
+            promise.resolve(response)
+        } else {
+            promise.reject("NO_RESPONSE", "No valid response received within timeout.")
+        }
+
+    } catch (e: Exception) {
+        Log.e("UsbSerialModule", "Send command failed", e)
+        promise.reject("SEND_ERROR", "Failed to send command: ${e.localizedMessage}", e)
+    }
+}
 
     
 
