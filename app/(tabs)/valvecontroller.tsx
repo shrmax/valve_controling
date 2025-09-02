@@ -1,44 +1,80 @@
+import { Picker } from '@react-native-picker/picker';
 import React, { useState } from 'react';
 import { ToastAndroid } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons'; // Make sure you have this package installed
 
 import {
-  Alert,
   Dimensions,
   Pressable,
   ScrollView,
   StyleSheet,
   Switch,
   Text,
-  View,
+  View
 } from 'react-native';
+import { useUserData } from '../UserDataContext'; // Add this import
 
 const ValveController = () => {
-  const zoneMap: Record<string, string[]> = {
-    Ganapathi: ['E', 'F', 'H', 'Q', 'M', 'N'],
-    Srinivas: ['A', 'B', 'C', 'P', 'Q', 'R'],
-  };
+  const { userData } = useUserData();
 
-  const [selectedZone, setSelectedZone] = useState('Ganapathi');
-  const valves = zoneMap[selectedZone];
-  const flowData = [
-    { valve: 'E', status: 'ON', reading: '2.4' },
-    { valve: 'F', status: 'OFF', reading: '0.0' },
-    { valve: 'Q', status: 'ON', reading: '3.1' },
-  ];
+  // Build zoneMap from userData
+  const zoneMap: Record<string, string[]> = {};
+  userData.zones.forEach(zone => {
+    zoneMap[zone.name] = zone.valves;
+  });
 
+  const [selectedZone, setSelectedZone] = useState(userData.zones[0]?.name || '');
+  const selectedZoneData = userData.zones.find(z => z.name === selectedZone);
+
+  const valves = zoneMap[selectedZone] || [];
   const [valveStates, setValveStates] = useState<Record<string, boolean>>({});
   const [logs, setLogs] = useState<string[]>([]);
+  const [flowValue, setFlowValue] = useState<string>("--");
+  const [batteryValue, setBatteryValue] = useState<string>("--");
+  const [refreshing, setRefreshing] = useState<boolean>(false);
 
-  const sendToPicoW = async (command: string) => {
+  // Convert hex string to ASCII symbols (for valve IDs)
+  const hexToAscii = (input: string) => {
+    const clean = input.replace(/[^0-9a-fA-F ]/g, '').trim();
+    if (!clean) return "";
+    return clean.split(" ")
+      .map(h => String.fromCharCode(parseInt(h, 16)))
+      .join("");
+  };
+
+  // Convert hex string to decimal values (for flow readings)
+  const hexToDecimal = (input: string) => {
+    const clean = input.replace(/[^0-9a-fA-F ]/g, '').trim();
+    if (!clean) return "";
+    return clean.split(" ")
+      .map(h => parseInt(h, 16))
+      .filter(n => !isNaN(n))
+      .join(" ");
+  };
+
+  const sendToPicoW = async (command: string, type: "valve" | "flow"): Promise<string> => {
     try {
-      const picoIP = 'http://192.168.4.1';
+      const picoIP = 'http://192.168.1.14:3000';
       const response = await fetch(`${picoIP}/?data=${encodeURIComponent(command)}`);
       const resText = await response.text();
-      setLogs(prev => [`🌐 PicoW Response: ${resText.trim()}`, ...prev]);
+
+      let parsed = "";
+      if (type === "valve") {
+        parsed = hexToAscii(resText);
+      } else if (type === "flow") {
+        parsed = hexToDecimal(resText);
+      }
+
+      setLogs(prev => [
+        `🌐 PicoW Response [${type}]: ${resText.trim()} → ${parsed}`,
+        ...prev
+      ]);
+
+      return parsed;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       setLogs(prev => [`❌ PicoW Error: ${msg}`, ...prev]);
+      return "";
     }
   };
 
@@ -47,7 +83,19 @@ const ValveController = () => {
     setValveStates(prev => ({ ...prev, [valve]: state }));
     setLogs(prev => [`📤 Sent ${command}`, ...prev]);
 
-    await sendToPicoW(command);
+    const ress = await sendToPicoW(command, "valve");
+    if (ress === "?") {
+      setLogs(prev => [`⚠️ Invalid response for Valve ${valve}: "${ress}"`, ...prev]);
+      setValveStates(prev => ({ ...prev, [valve]: !state }));
+      ToastAndroid.showWithGravityAndOffset(
+        `⚠️ Valve ${valve} command rejected`,
+        ToastAndroid.LONG,
+        ToastAndroid.BOTTOM,
+        0,
+        100
+      );
+      return;
+    }
 
     ToastAndroid.showWithGravityAndOffset(
       `Valve ${valve} turned ${state ? 'ON' : 'OFF'}`,
@@ -56,6 +104,30 @@ const ValveController = () => {
       0,
       100
     );
+  };
+
+  const handleRefreshFlow = async () => {
+    setRefreshing(true);
+    try {
+      const flowCmd = selectedZoneData?.flow || "F";
+      const flowRes = await sendToPicoW(flowCmd, "flow");
+      setFlowValue(flowRes || "--");
+    } catch {
+      setLogs(prev => [`❌ Flow refresh failed`, ...prev]);
+    }
+    setRefreshing(false);
+  };
+
+  const handleRefreshBattery = async () => {
+    setRefreshing(true);
+    try {
+      const batteryCmd = selectedZoneData?.battery || "B";
+      const batteryRes = await sendToPicoW(batteryCmd, "flow");
+      setBatteryValue(batteryRes || "--");
+    } catch {
+      setLogs(prev => [`❌ Battery refresh failed`, ...prev]);
+    }
+    setRefreshing(false);
   };
 
   return (
@@ -94,23 +166,37 @@ const ValveController = () => {
           ))}
         </View>
 
-        <Text style={styles.sectionTitle}>💧 Flow Meter Readings</Text>
-        <View style={styles.flowMeterContainer}>
-          <View style={styles.flowHeader}>
-            <Text style={styles.flowHeaderText}>Valve</Text>
-            <Text style={styles.flowHeaderText}>Status</Text>
-            <Text style={styles.flowHeaderText}>Reading (L/min)</Text>
+        <View style={styles.statusRow}>
+          <View style={styles.statusBox}>
+            <Text style={styles.statusLabel}>Flow</Text>
+            <Text style={styles.statusValue}>{flowValue}</Text>
+            <Pressable
+              style={({ pressed }) => [
+                styles.iconButton,
+                refreshing && { opacity: 0.5 },
+                pressed && { backgroundColor: "#e0e7ef" }
+              ]}
+              onPress={handleRefreshFlow}
+              disabled={refreshing}
+            >
+              <Icon name="refresh" size={24} color="#2268ad" />
+            </Pressable>
           </View>
-
-          <ScrollView style={styles.flowScroll} nestedScrollEnabled>
-            {flowData.map((item, idx) => (
-              <View key={idx} style={styles.flowRow}>
-                <Text style={styles.flowCell}>{item.valve}</Text>
-                <Text style={styles.flowCell}>{item.status}</Text>
-                <Text style={styles.flowCell}>{item.reading}</Text>
-              </View>
-            ))}
-          </ScrollView>
+          <View style={styles.statusBox}>
+            <Text style={styles.statusLabel}>Battery</Text>
+            <Text style={styles.statusValue}>{batteryValue}</Text>
+            <Pressable
+              style={({ pressed }) => [
+                styles.iconButton,
+                refreshing && { opacity: 0.5 },
+                pressed && { backgroundColor: "#e0e7ef" }
+              ]}
+              onPress={handleRefreshBattery}
+              disabled={refreshing}
+            >
+              <Icon name="refresh" size={24} color="#2268ad" />
+            </Pressable>
+          </View>
         </View>
 
         <Text style={styles.logTitle}>📝Command Logs:</Text>
@@ -126,7 +212,6 @@ const ValveController = () => {
             ))}
           </ScrollView>
         </View>
-
       </ScrollView>
     </View>
   );
@@ -144,15 +229,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginVertical: 20,
   },
-  connectButton: {
-    backgroundColor: '#d3d3d3',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginVertical: 10,
-    width: '100%',
-  },
-  buttonText: { fontSize: 16, fontWeight: '500' },
   valveGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -175,7 +251,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 8,
   },
-  logSection: { width: '100%', marginVertical: 20 },
   logTitle: {
     fontWeight: 'bold',
     fontSize: 16,
@@ -220,47 +295,43 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#d1d5db',
   },
-  flowMeterContainer: {
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+    marginTop: 10,
+  },
+  statusBox: {
+    flex: 1,
     backgroundColor: '#f9fafb',
     borderRadius: 10,
-    padding: 12,
-    marginBottom: 20,
+    padding: 18,
+    marginHorizontal: 6,
+    alignItems: 'center',
     elevation: 2,
+    position: 'relative',
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 10,
-    color: 'rgb(34, 104, 173)',
-  },
-  flowHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-    borderBottomWidth: 1,
-    borderColor: '#d1d5db',
-    paddingBottom: 4,
-  },
-  flowHeaderText: {
+  statusLabel: {
     fontSize: 14,
-    fontWeight: 'bold',
-    flex: 1,
-    textAlign: 'center',
-    color: '#4b5563',
-  },
-  flowScroll: {
-    maxHeight: 160,
-  },
-  flowRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    color: '#2c3e50',
+    fontWeight: '600',
     marginBottom: 6,
   },
-  flowCell: {
-    flex: 1,
-    textAlign: 'center',
-    color: '#374151',
-    fontSize: 13,
+  statusValue: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#2268ad',
+    marginBottom: 8,
+  },
+  iconButton: {
+    marginTop: 6,
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: '#e5e7eb',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
   },
 });
 
