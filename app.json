@@ -17,9 +17,7 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.shan06.valve_controling",
-      "permissions": ["USB_PERMISSION"],
-      "usesFeature": ["android.hardware.usb.host"]
+      "package": "com.shan06.valve_controling"
     },
     "web": {
       "bundler": "metro",
