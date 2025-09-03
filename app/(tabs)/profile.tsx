@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
-import { FlatList, Image, Modal, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Image, Modal, Pressable, SafeAreaView, StyleSheet, Text, TextInput, useColorScheme, View, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useUserData } from '../UserDataContext'; // Add this import
+import { useUserData, initialUserData } from '../UserDataContext';
+import { Colors } from '../../constants/Colors';
+import { useRouter } from 'expo-router';
 
 const ProfilePage = () => {
+  const colorScheme = useColorScheme();
+  const themeColors = Colors[colorScheme ?? 'light'];
   const { userData, setUserData } = useUserData(); // Use context instead of local state
   const [editIdx, setEditIdx] = useState<number | null>(null);
   const [editFlow, setEditFlow] = useState('');
@@ -48,6 +52,14 @@ const ProfilePage = () => {
     setEditValves(editValves.filter(v => v !== val));
   };
 
+  const router = useRouter();
+  const styles = createStyles(themeColors);
+
+  const handleLogout = () => {
+    setUserData(initialUserData); // Reset user data to initial state
+    router.replace('/'); // Navigate back to the login page
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.profileContainer}>
@@ -79,6 +91,10 @@ const ProfilePage = () => {
             </View>
           ))}
         </View>
+
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Text style={styles.logoutButtonText}>Logout</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Edit Modal */}
@@ -149,10 +165,11 @@ const ProfilePage = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (themeColors: (typeof Colors.light) & { contentBackground?: string }) => StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: 60,
+    backgroundColor: themeColors.background,
   },
   profileContainer: {
     alignItems: 'center',
@@ -164,23 +181,23 @@ const styles = StyleSheet.create({
     borderRadius: 60,
     marginBottom: 20,
     borderWidth: 2,
-    borderColor: '#333',
+    borderColor: themeColors.tint,
   },
   name: {
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 10,
-    color: '#333',
+    color: themeColors.text,
   },
   detail: {
     fontSize: 16,
     marginBottom: 8,
-    color: '#666',
+    color: themeColors.text,
   },
   statsSection: {
     marginTop: 30,
     width: '100%',
-    backgroundColor: '#f5f7fa',
+    backgroundColor: themeColors.contentBackground || themeColors.background,
     borderRadius: 12,
     padding: 16,
     elevation: 2,
@@ -188,14 +205,14 @@ const styles = StyleSheet.create({
   statsTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#2268ad',
+    color: themeColors.tint,
     marginBottom: 12,
     textAlign: 'center',
   },
   zoneBox: {
     marginBottom: 16,
     padding: 10,
-    backgroundColor: '#fff',
+    backgroundColor: themeColors.contentBackground || themeColors.background,
     borderRadius: 8,
     elevation: 1,
     position: 'relative',
@@ -203,7 +220,7 @@ const styles = StyleSheet.create({
   zoneName: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#2c3e50',
+    color: themeColors.text,
     marginBottom: 4,
   },
   editIcon: {
@@ -215,11 +232,11 @@ const styles = StyleSheet.create({
   },
   zoneDetail: {
     fontSize: 14,
-    color: '#444',
+    color: themeColors.text,
     marginBottom: 2,
   },
   zoneValves: {
-    color: '#2268ad',
+    color: themeColors.tint,
     fontWeight: '600',
   },
   zoneValue: {
@@ -233,13 +250,13 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.25)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalBox: {
     width: 320,
-    backgroundColor: '#fff',
+    backgroundColor: themeColors.contentBackground || themeColors.background,
     borderRadius: 12,
     padding: 20,
     elevation: 4,
@@ -247,18 +264,19 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#2268ad',
+    color: themeColors.tint,
     marginBottom: 16,
     textAlign: 'center',
   },
   input: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: themeColors.icon,
     borderRadius: 6,
     padding: 10,
     marginBottom: 10,
     fontSize: 16,
-    backgroundColor: '#f9fafb',
+    backgroundColor: themeColors.background,
+    color: themeColors.text,
   },
   addValveBtn: {
     marginLeft: 8,
@@ -267,7 +285,7 @@ const styles = StyleSheet.create({
   valveChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#e3f2fd',
+    backgroundColor: themeColors.tint,
     borderRadius: 16,
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -277,6 +295,20 @@ const styles = StyleSheet.create({
   modalBtn: {
     paddingVertical: 8,
     paddingHorizontal: 18,
+  },
+  logoutButton: {
+    backgroundColor: '#e53935', // Red color for logout
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 12,
+    marginTop: 30,
+    width: '80%',
+    alignItems: 'center',
+  },
+  logoutButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 18,
   },
 });
 

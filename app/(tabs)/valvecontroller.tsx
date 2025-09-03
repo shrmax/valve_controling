@@ -4,17 +4,23 @@ import { ToastAndroid } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons'; // Make sure you have this package installed
 
 import {
+  ActivityIndicator,
+  Alert,
   Dimensions,
   Pressable,
   ScrollView,
   StyleSheet,
   Switch,
   Text,
+  useColorScheme,
   View
 } from 'react-native';
 import { useUserData } from '../UserDataContext'; // Add this import
+import { Colors } from '../../constants/Colors';
 
 const ValveController = () => {
+  const colorScheme = useColorScheme();
+  const themeColors = Colors[colorScheme ?? 'light'];
   const { userData } = useUserData();
 
   // Build zoneMap from userData
@@ -31,7 +37,10 @@ const ValveController = () => {
   const [logs, setLogs] = useState<string[]>([]);
   const [flowValue, setFlowValue] = useState<string>("--");
   const [batteryValue, setBatteryValue] = useState<string>("--");
-  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [isRefreshingFlow, setIsRefreshingFlow] = useState<boolean>(false);
+  const [isRefreshingBattery, setIsRefreshingBattery] = useState<boolean>(false);
+  const [isPumpOn, setIsPumpOn] = useState<boolean>(false);
+  const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
 
   // Convert hex string to ASCII symbols (for valve IDs)
   const hexToAscii = (input: string) => {
@@ -54,7 +63,7 @@ const ValveController = () => {
 
   const sendToPicoW = async (command: string, type: "valve" | "flow"): Promise<string> => {
     try {
-      const picoIP = 'http://192.168.1.14:3000';
+      const picoIP = 'http://192.168.0.100:3000';
       const response = await fetch(`${picoIP}/?data=${encodeURIComponent(command)}`);
       const resText = await response.text();
 
@@ -80,13 +89,23 @@ const ValveController = () => {
 
   const handleValveToggle = async (valve: string, state: boolean) => {
     const command = state ? valve : valve.toLowerCase();
-    setValveStates(prev => ({ ...prev, [valve]: state }));
+    setLoadingStates(prev => ({ ...prev, [valve]: true }));
     setLogs(prev => [`📤 Sent ${command}`, ...prev]);
 
     const ress = await sendToPicoW(command, "valve");
-    if (ress === "?") {
+    setLoadingStates(prev => ({ ...prev, [valve]: false }));
+
+    if (ress !== "?") {
+      setValveStates(prev => ({ ...prev, [valve]: state }));
+      ToastAndroid.showWithGravityAndOffset(
+        `Valve ${valve} turned ${state ? 'ON' : 'OFF'}`,
+        ToastAndroid.LONG,
+        ToastAndroid.BOTTOM,
+        0,
+        100
+      );
+    } else {
       setLogs(prev => [`⚠️ Invalid response for Valve ${valve}: "${ress}"`, ...prev]);
-      setValveStates(prev => ({ ...prev, [valve]: !state }));
       ToastAndroid.showWithGravityAndOffset(
         `⚠️ Valve ${valve} command rejected`,
         ToastAndroid.LONG,
@@ -94,20 +113,54 @@ const ValveController = () => {
         0,
         100
       );
-      return;
     }
+  };
 
-    ToastAndroid.showWithGravityAndOffset(
-      `Valve ${valve} turned ${state ? 'ON' : 'OFF'}`,
-      ToastAndroid.LONG,
-      ToastAndroid.BOTTOM,
-      0,
-      100
+  const handlePumpToggle = async () => {
+    const newState = !isPumpOn;
+    const command = newState ? "P" : "p";
+
+    Alert.alert(
+      "Confirm Pump Action",
+      `Are you sure you want to turn the pump ${newState ? 'ON' : 'OFF'}?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Confirm",
+          onPress: async () => {
+            setLoadingStates(prev => ({ ...prev, pump: true }));
+            setLogs(prev => [`📤 Sent ${command} for Pump`, ...prev]);
+
+            const ress = await sendToPicoW(command, "valve");
+            setLoadingStates(prev => ({ ...prev, pump: false }));
+
+            if (ress !== "?") {
+              setIsPumpOn(newState);
+              ToastAndroid.showWithGravityAndOffset(
+                `Pump turned ${newState ? 'ON' : 'OFF'}`,
+                ToastAndroid.LONG,
+                ToastAndroid.BOTTOM,
+                0,
+                100
+              );
+            } else {
+              setLogs(prev => [`⚠️ Invalid response for Pump: "${ress}"`, ...prev]);
+              ToastAndroid.showWithGravityAndOffset(
+                `⚠️ Pump command rejected`,
+                ToastAndroid.LONG,
+                ToastAndroid.BOTTOM,
+                0,
+                100
+              );
+            }
+          },
+        },
+      ]
     );
   };
 
   const handleRefreshFlow = async () => {
-    setRefreshing(true);
+    setIsRefreshingFlow(true);
     try {
       const flowCmd = selectedZoneData?.flow || "F";
       const flowRes = await sendToPicoW(flowCmd, "flow");
@@ -115,11 +168,11 @@ const ValveController = () => {
     } catch {
       setLogs(prev => [`❌ Flow refresh failed`, ...prev]);
     }
-    setRefreshing(false);
+    setIsRefreshingFlow(false);
   };
 
   const handleRefreshBattery = async () => {
-    setRefreshing(true);
+    setIsRefreshingBattery(true);
     try {
       const batteryCmd = selectedZoneData?.battery || "B";
       const batteryRes = await sendToPicoW(batteryCmd, "flow");
@@ -127,13 +180,15 @@ const ValveController = () => {
     } catch {
       setLogs(prev => [`❌ Battery refresh failed`, ...prev]);
     }
-    setRefreshing(false);
+    setIsRefreshingBattery(false);
   };
+
+  const styles = createStyles(themeColors);
 
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Quadra Valve Controller</Text>
+        <Text style={styles.title}>AquaFlow Controller</Text>
 
         <View style={styles.pickerWrapper}>
           <Text style={styles.dropdownLabel}>Select Zone:</Text>
@@ -141,9 +196,9 @@ const ValveController = () => {
             <Picker
               selectedValue={selectedZone}
               onValueChange={(itemValue) => setSelectedZone(itemValue)}
-              style={{ color: '#000', height: 50 }}
+              style={{ color: themeColors.text, height: 50 }}
               mode='dropdown'
-              dropdownIconColor="#000"
+              dropdownIconColor={themeColors.text}
             >
               {Object.keys(zoneMap).map((zone) => (
                 <Picker.Item label={zone} value={zone} key={zone} />
@@ -156,15 +211,40 @@ const ValveController = () => {
           {valves.map(valve => (
             <View key={valve} style={styles.valveCard}>
               <Text style={styles.valveLabel}>Valve {valve}</Text>
-              <Switch
-                value={!!valveStates[valve]}
-                onValueChange={(value) => handleValveToggle(valve, value)}
-                trackColor={{ false: '#767577', true: '#4CAF50' }}
-                thumbColor="#f4f3f4"
-              />
+              {loadingStates[valve] ? (
+                <ActivityIndicator size="small" color="#2268ad" />
+              ) : (
+                <Switch
+                  value={!!valveStates[valve]}
+                  onValueChange={(value) => handleValveToggle(valve, value)}
+                  trackColor={{ false: '#767577', true: '#4CAF50' }}
+                  thumbColor="#f4f3f4"
+                  disabled={loadingStates[valve]}
+                />
+              )}
             </View>
           ))}
         </View>
+        <View style={styles.pumpBox}>
+  <Icon name="water-pump" size={36} color="#2268ad" />
+  <Text style={styles.pumpLabel}>Pump</Text>
+  <Pressable
+    style={({ pressed }) => [
+      styles.pumpButton,
+      { backgroundColor: isPumpOn ? '#f44336' : '#4CAF50' },
+      (pressed || loadingStates.pump) && { opacity: 0.8 }
+    ]}
+    onPress={handlePumpToggle}
+    disabled={loadingStates.pump}
+  >
+    {loadingStates.pump ? (
+      <ActivityIndicator size="small" color="#fff" />
+    ) : (
+      <Text style={styles.pumpButtonText}>{isPumpOn ? 'Turn OFF' : 'Turn ON'}</Text>
+    )}
+  </Pressable>
+</View>
+
 
         <View style={styles.statusRow}>
           <View style={styles.statusBox}>
@@ -173,13 +253,13 @@ const ValveController = () => {
             <Pressable
               style={({ pressed }) => [
                 styles.iconButton,
-                refreshing && { opacity: 0.5 },
+                isRefreshingFlow && { opacity: 0.5 },
                 pressed && { backgroundColor: "#e0e7ef" }
               ]}
               onPress={handleRefreshFlow}
-              disabled={refreshing}
+              disabled={isRefreshingFlow}
             >
-              <Icon name="refresh" size={24} color="#2268ad" />
+              {isRefreshingFlow ? <ActivityIndicator size="small" color="#2268ad" /> : <Icon name="refresh" size={24} color="#2268ad" />}
             </Pressable>
           </View>
           <View style={styles.statusBox}>
@@ -188,13 +268,13 @@ const ValveController = () => {
             <Pressable
               style={({ pressed }) => [
                 styles.iconButton,
-                refreshing && { opacity: 0.5 },
+                isRefreshingBattery && { opacity: 0.5 },
                 pressed && { backgroundColor: "#e0e7ef" }
               ]}
               onPress={handleRefreshBattery}
-              disabled={refreshing}
+              disabled={isRefreshingBattery}
             >
-              <Icon name="refresh" size={24} color="#2268ad" />
+              {isRefreshingBattery ? <ActivityIndicator size="small" color="#2268ad" /> : <Icon name="refresh" size={24} color="#2268ad" />}
             </Pressable>
           </View>
         </View>
@@ -219,13 +299,20 @@ const ValveController = () => {
 
 const screen = Dimensions.get('window');
 
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scrollContent: { flexGrow: 1, padding: 16, minHeight: screen.height },
+const createStyles = (themeColors: (typeof Colors.light) & { contentBackground?: string }) => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: themeColors.background,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    padding: 16,
+    minHeight: screen.height,
+  },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: 'rgb(34, 104, 173)',
+    color: themeColors.tint,
     textAlign: 'center',
     marginVertical: 20,
   },
@@ -237,28 +324,32 @@ const styles = StyleSheet.create({
   },
   valveCard: {
     width: (screen.width - 48) / 3,
-    backgroundColor: '#fff',
+    backgroundColor: themeColors.contentBackground || themeColors.background,
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 2,
     margin: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
   },
   valveLabel: {
     fontWeight: '600',
-    color: '#2c3e50',
+    color: themeColors.text,
     fontSize: 16,
     marginBottom: 8,
   },
   logTitle: {
     fontWeight: 'bold',
     fontSize: 16,
-    color: 'rgb(34, 104, 173)',
+    color: themeColors.tint,
     marginBottom: 8,
   },
   logBox: {
-    backgroundColor: '#fff',
+    backgroundColor: themeColors.contentBackground || themeColors.background,
     borderRadius: 8,
     padding: 12,
     maxHeight: 200,
@@ -271,12 +362,12 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   logText: {
-    color: '#4a5568',
+    color: themeColors.text,
     fontSize: 14,
     marginBottom: 8,
   },
   pickerWrapper: {
-    backgroundColor: '#f1f5f9',
+    backgroundColor: themeColors.contentBackground || themeColors.background,
     borderRadius: 8,
     paddingVertical: 8,
     paddingHorizontal: 12,
@@ -287,13 +378,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     marginBottom: 4,
-    color: '#2c3e50',
+    color: themeColors.text,
   },
   pickerContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: themeColors.background,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: themeColors.icon,
   },
   statusRow: {
     flexDirection: 'row',
@@ -304,7 +395,7 @@ const styles = StyleSheet.create({
   },
   statusBox: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: themeColors.contentBackground || themeColors.background,
     borderRadius: 10,
     padding: 18,
     marginHorizontal: 6,
@@ -314,24 +405,51 @@ const styles = StyleSheet.create({
   },
   statusLabel: {
     fontSize: 14,
-    color: '#2c3e50',
+    color: themeColors.text,
     fontWeight: '600',
     marginBottom: 6,
   },
   statusValue: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#2268ad',
+    color: themeColors.tint,
     marginBottom: 8,
   },
   iconButton: {
     marginTop: 6,
     padding: 8,
     borderRadius: 20,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: themeColors.background,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
+  },
+  pumpBox: {
+    backgroundColor: themeColors.contentBackground || themeColors.background,
+    borderRadius: 12,
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 12,
+    elevation: 3,
+  },
+  pumpLabel: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: themeColors.text,
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  pumpButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 25,
+    elevation: 2,
+  },
+  pumpButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

@@ -12,17 +12,52 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { useUserData } from './UserDataContext';
+import { Alert } from 'react-native'; // Import Alert for displaying messages
 
 export default function LoginPage() {
   const [emailOrPhone, setEmailOrPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const theme= useColorScheme();
+  const theme = useColorScheme();
   const router = useRouter();
+  const { setUserData } = useUserData();
+
+  // Simulated authentication function
+  const authenticateUser = (email: string, pass: string) => {
+    // Replace with actual API call in a real application
+    if (email === 'test@example.com' && pass === 'password123') {
+      return {
+        name: 'Test User',
+        email: 'test@example.com',
+        number: '+1 987 654 3210',
+        zones: [
+          {
+            name: 'Test Zone 1',
+            valves: ['X', 'Y'],
+            flow: 'A',
+            battery: 'C',
+          },
+          {
+            name: 'Test Zone 2',
+            valves: ['Z'],
+            flow: 'B',
+            battery: 'D',
+          },
+        ],
+      };
+    }
+    return null;
+  };
 
   const handleLogin = () => {
-    
-    router .replace('/(tabs)/valvecontroller');
+    const authenticatedUser = authenticateUser(emailOrPhone, password);
+    if (authenticatedUser) {
+      setUserData(authenticatedUser);
+      router.replace('/(tabs)/valvecontroller');
+    } else {
+      Alert.alert('Login Failed', 'Invalid email/phone or password.');
+    }
   };
 
   const togglePasswordVisibility = () => {

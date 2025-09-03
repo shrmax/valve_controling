@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
 
-const initialUserData = {
+export const initialUserData = {
   name: "John Doe",
   email: "john.doe@example.com",
   number: "+1 234 567 890",
