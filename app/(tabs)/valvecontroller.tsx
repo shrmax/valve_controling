@@ -63,8 +63,19 @@ const ValveController = () => {
 
   const sendToPicoW = async (command: string, type: "valve" | "flow"): Promise<string> => {
     try {
-      const picoIP = 'http://192.168.0.100:3000';
-      const response = await fetch(`${picoIP}/?data=${encodeURIComponent(command)}`);
+      const picoIP = userData.picoIp;
+      if (!picoIP) {
+        setLogs(prev => [`❌ PicoW Error: Pico IP is not set in profile.`, ...prev]);
+        ToastAndroid.showWithGravityAndOffset(
+          `❌ Pico IP not set. Please set it in your profile.`,
+          ToastAndroid.LONG,
+          ToastAndroid.BOTTOM,
+          0,
+          100
+        );
+        return "";
+      }
+      const response = await fetch(`http://${picoIP}:3000/?data=${encodeURIComponent(command)}`);
       const resText = await response.text();
 
       let parsed = "";
@@ -83,7 +94,7 @@ const ValveController = () => {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       setLogs(prev => [`❌ PicoW Error: ${msg}`, ...prev]);
-      return "";
+      return "ERROR"; // Return a specific error indicator
     }
   };
 
@@ -95,7 +106,8 @@ const ValveController = () => {
     const ress = await sendToPicoW(command, "valve");
     setLoadingStates(prev => ({ ...prev, [valve]: false }));
 
-    if (ress !== "?") {
+    // Check if the response matches the expected command
+    if (ress === command) {
       setValveStates(prev => ({ ...prev, [valve]: state }));
       ToastAndroid.showWithGravityAndOffset(
         `Valve ${valve} turned ${state ? 'ON' : 'OFF'}`,
@@ -104,10 +116,12 @@ const ValveController = () => {
         0,
         100
       );
+    } else if (ress === "ERROR") {
+      // State remains unchanged, error message already logged by sendToPicoW
     } else {
-      setLogs(prev => [`⚠️ Invalid response for Valve ${valve}: "${ress}"`, ...prev]);
+      setLogs(prev => [`⚠️ Irrelevant response for Valve ${valve}: "${ress}"`, ...prev]);
       ToastAndroid.showWithGravityAndOffset(
-        `⚠️ Valve ${valve} command rejected`,
+        `⚠️ Valve ${valve} command rejected or irrelevant response`,
         ToastAndroid.LONG,
         ToastAndroid.BOTTOM,
         0,
@@ -134,7 +148,8 @@ const ValveController = () => {
             const ress = await sendToPicoW(command, "valve");
             setLoadingStates(prev => ({ ...prev, pump: false }));
 
-            if (ress !== "?") {
+            // Check if the response matches the expected command
+            if (ress === command) {
               setIsPumpOn(newState);
               ToastAndroid.showWithGravityAndOffset(
                 `Pump turned ${newState ? 'ON' : 'OFF'}`,
@@ -143,10 +158,12 @@ const ValveController = () => {
                 0,
                 100
               );
+            } else if (ress === "ERROR") {
+              // State remains unchanged, error message already logged by sendToPicoW
             } else {
-              setLogs(prev => [`⚠️ Invalid response for Pump: "${ress}"`, ...prev]);
+              setLogs(prev => [`⚠️ Irrelevant response for Pump: "${ress}"`, ...prev]);
               ToastAndroid.showWithGravityAndOffset(
-                `⚠️ Pump command rejected`,
+                `⚠️ Pump command rejected or irrelevant response`,
                 ToastAndroid.LONG,
                 ToastAndroid.BOTTOM,
                 0,
@@ -381,7 +398,7 @@ const createStyles = (themeColors: (typeof Colors.light) & { contentBackground?:
     color: themeColors.text,
   },
   pickerContainer: {
-    backgroundColor: themeColors.background,
+    backgroundColor: themeColors.contentBackground || themeColors.background, // Ensure background adapts to theme
     borderRadius: 6,
     borderWidth: 1,
     borderColor: themeColors.icon,

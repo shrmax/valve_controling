@@ -4,6 +4,7 @@ export const initialUserData = {
   name: "John Doe",
   email: "john.doe@example.com",
   number: "+1 234 567 890",
+  picoIp: "192.168.1.100", // Default IP for testing
   zones: [
     {
       name: "Ganapathi",
@@ -20,9 +21,11 @@ export const initialUserData = {
   ]
 };
 
+type UserDataType = typeof initialUserData;
+
 const UserDataContext = createContext<{
-  userData: typeof initialUserData;
-  setUserData: React.Dispatch<React.SetStateAction<typeof initialUserData>>;
+  userData: UserDataType;
+  setUserData: React.Dispatch<React.SetStateAction<UserDataType>>;
 }>({
   userData: initialUserData,
   setUserData: () => {},

@@ -24,9 +24,6 @@ class MainApplication : Application(), ReactApplication {
         // Get the auto-linked packages
         val packages = PackageList(this).packages
 
-        // Manually add custom native packages
-        packages.add(UsbSerialPackage())
-
         return packages
       }
 

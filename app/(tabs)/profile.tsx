@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FlatList, Image, Modal, Pressable, SafeAreaView, StyleSheet, Text, TextInput, useColorScheme, View, TouchableOpacity } from 'react-native';
+import { FlatList, Image, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, useColorScheme, View, TouchableOpacity, Dimensions } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useUserData, initialUserData } from '../UserDataContext';
 import { Colors } from '../../constants/Colors';
@@ -14,18 +14,20 @@ const ProfilePage = () => {
   const [editBattery, setEditBattery] = useState('');
   const [editValves, setEditValves] = useState<string[]>([]);
   const [newValve, setNewValve] = useState('');
-  const [modalVisible, setModalVisible] = useState(false);
+  const [zoneModalVisible, setZoneModalVisible] = useState(false); // State for Zone Edit Modal
+  const [picoIpModalVisible, setPicoIpModalVisible] = useState(false); // State for Pico IP Edit Modal
+  const [editPicoIp, setEditPicoIp] = useState(''); // State for editing Pico IP
 
-  const openEdit = (idx: number) => {
+  const openZoneEdit = (idx: number) => {
     setEditIdx(idx);
     setEditFlow(userData.zones[idx].flow);
     setEditBattery(userData.zones[idx].battery);
     setEditValves([...userData.zones[idx].valves]);
     setNewValve('');
-    setModalVisible(true);
+    setZoneModalVisible(true);
   };
 
-  const saveEdit = () => {
+  const saveZoneEdit = () => {
     if (editIdx !== null) {
       const zones = [...userData.zones];
       zones[editIdx] = {
@@ -36,8 +38,18 @@ const ProfilePage = () => {
       };
       setUserData({ ...userData, zones });
     }
-    setModalVisible(false);
+    setZoneModalVisible(false);
     setEditIdx(null);
+  };
+
+  const openPicoIpEdit = () => {
+    setEditPicoIp(userData.picoIp || ''); // Initialize with current IP or empty string
+    setPicoIpModalVisible(true);
+  };
+
+  const savePicoIpEdit = () => {
+    setUserData({ ...userData, picoIp: editPicoIp });
+    setPicoIpModalVisible(false);
   };
 
   const addValve = () => {
@@ -62,11 +74,12 @@ const ProfilePage = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.profileContainer}>
-        <Image
-          source={require('../../assets/images/profile.png')}
-          style={styles.profileImage}
-        />
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.profileContainer}>
+          <Image
+            source={require('../../assets/images/profile.png')}
+            style={styles.profileImage}
+          />
         <Text style={styles.name}>{userData.name}</Text>
         <Text style={styles.detail}>{userData.email}</Text>
         <Text style={styles.detail}>{userData.number}</Text>
@@ -78,7 +91,7 @@ const ProfilePage = () => {
               <Text style={styles.zoneName}>{zone.name}</Text>
               <Pressable
                 style={styles.editIcon}
-                onPress={() => openEdit(idx)}
+                onPress={() => openZoneEdit(idx)}
                 hitSlop={10}
               >
                 <Icon name="pencil" size={22} color="#2268ad" />
@@ -92,21 +105,38 @@ const ProfilePage = () => {
           ))}
         </View>
 
+        {/* Pico IP Section */}
+        <View style={styles.statsSection}>
+          <Text style={styles.statsTitle}>Pico IP</Text>
+          <View style={styles.zoneBox}>
+            <Text style={styles.zoneName}>Current IP: <Text style={styles.zoneValue}>{userData.picoIp || 'Not set'}</Text></Text>
+            <Pressable
+              style={styles.editIcon}
+              onPress={openPicoIpEdit}
+              hitSlop={10}
+            >
+              <Icon name="pencil" size={22} color="#2268ad" />
+            </Pressable>
+          </View>
+        </View>
+
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Text style={styles.logoutButtonText}>Logout</Text>
         </TouchableOpacity>
       </View>
+    </ScrollView>
 
-      {/* Edit Modal */}
+      {/* Zone Edit Modal */}
       <Modal
-        visible={modalVisible}
+        visible={zoneModalVisible}
         transparent
         animationType="slide"
-        onRequestClose={() => setModalVisible(false)}
+        onRequestClose={() => setZoneModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
             <Text style={styles.modalTitle}>Edit Zone Values</Text>
+            <Text style={styles.inputLabel}>Flow:</Text>
             <TextInput
               style={styles.input}
               value={editFlow}
@@ -115,6 +145,7 @@ const ProfilePage = () => {
               autoCapitalize='characters'
               maxLength={1}
             />
+            <Text style={styles.inputLabel}>Battery:</Text>
             <TextInput
               style={styles.input}
               value={editBattery}
@@ -151,10 +182,39 @@ const ProfilePage = () => {
               showsHorizontalScrollIndicator={false}
             />
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 16 }}>
-              <Pressable style={styles.modalBtn} onPress={() => setModalVisible(false)}>
+              <Pressable style={styles.modalBtn} onPress={() => setZoneModalVisible(false)}>
                 <Text style={{ color: '#2268ad', fontWeight: 'bold' }}>Cancel</Text>
               </Pressable>
-              <Pressable style={[styles.modalBtn, { marginLeft: 12 }]} onPress={saveEdit}>
+              <Pressable style={[styles.modalBtn, { marginLeft: 12 }]} onPress={saveZoneEdit}>
+                <Text style={{ color: '#4caf50', fontWeight: 'bold' }}>Save</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Pico IP Edit Modal */}
+      <Modal
+        visible={picoIpModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setPicoIpModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>Edit Pico IP</Text>
+            <TextInput
+              style={styles.input}
+              value={editPicoIp}
+              onChangeText={setEditPicoIp}
+              placeholder="Enter Pico IP Address"
+              keyboardType="numeric"
+            />
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 16 }}>
+              <Pressable style={styles.modalBtn} onPress={() => setPicoIpModalVisible(false)}>
+                <Text style={{ color: '#2268ad', fontWeight: 'bold' }}>Cancel</Text>
+              </Pressable>
+              <Pressable style={[styles.modalBtn, { marginLeft: 12 }]} onPress={savePicoIpEdit}>
                 <Text style={{ color: '#4caf50', fontWeight: 'bold' }}>Save</Text>
               </Pressable>
             </View>
@@ -165,11 +225,17 @@ const ProfilePage = () => {
   );
 };
 
+export default ProfilePage;
+
 const createStyles = (themeColors: (typeof Colors.light) & { contentBackground?: string }) => StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 60,
     backgroundColor: themeColors.background,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingTop: 60,
+    paddingBottom: 80, // Add padding for the bottom menu bar
   },
   profileContainer: {
     alignItems: 'center',
@@ -278,6 +344,13 @@ const createStyles = (themeColors: (typeof Colors.light) & { contentBackground?:
     backgroundColor: themeColors.background,
     color: themeColors.text,
   },
+  inputLabel: {
+    fontSize: 14,
+    color: themeColors.text,
+    marginBottom: 4,
+    marginTop: 8,
+    fontWeight: 'bold',
+  },
   addValveBtn: {
     marginLeft: 8,
     padding: 2,
@@ -311,5 +384,3 @@ const createStyles = (themeColors: (typeof Colors.light) & { contentBackground?:
     fontSize: 18,
   },
 });
-
-export default ProfilePage;
