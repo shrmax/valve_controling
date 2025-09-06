@@ -31,7 +31,7 @@ export default function LoginPage() {
         name: 'Test User',
         email: 'test@example.com',
         number: '+1 987 654 3210',
-        picoIp: '192.168.1.100', // Add picoIp field
+        picoIp: '192.168.0.100', // Add picoIp field
         zones: [
           {
             name: 'Test Zone 1',
