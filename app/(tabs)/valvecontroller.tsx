@@ -75,7 +75,7 @@ const ValveController = () => {
         );
         return "";
       }
-      const response = await fetch(`http://${picoIP}:3000/?data=${encodeURIComponent(command)}`);
+      const response = await fetch(`http://${picoIP}/?data=${encodeURIComponent(command)}`);
       const resText = await response.text();
 
       let parsed = "";
