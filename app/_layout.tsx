@@ -37,7 +37,7 @@ export default function App() {
           <Stack.Screen name="+not-found" />
           <Stack.Screen name="configure" />
           <Stack.Screen name="index"  options={{headerShown: false}} />
-          
+          <Stack.Screen name="edit-zones-valves" options={{ headerShown: false }} />
         </Stack>
         <StatusBar style="auto" />
       </ThemeProvider>

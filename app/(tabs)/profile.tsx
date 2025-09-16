@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FlatList, Image, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, useColorScheme, View, TouchableOpacity, Dimensions } from 'react-native';
+import { Image, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, useColorScheme, View, TouchableOpacity, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useUserData, initialUserData } from '../UserDataContext';
 import { Colors } from '../../constants/Colors';
@@ -8,68 +8,31 @@ import { useRouter } from 'expo-router';
 const ProfilePage = () => {
   const colorScheme = useColorScheme();
   const themeColors = Colors[colorScheme ?? 'light'];
-  const { userData, setUserData } = useUserData(); // Use context instead of local state
-  const [editIdx, setEditIdx] = useState<number | null>(null);
-  const [editFlow, setEditFlow] = useState('');
-  const [editBattery, setEditBattery] = useState('');
-  const [editValves, setEditValves] = useState<string[]>([]);
-  const [newValve, setNewValve] = useState('');
-  const [zoneModalVisible, setZoneModalVisible] = useState(false); // State for Zone Edit Modal
-  const [picoIpModalVisible, setPicoIpModalVisible] = useState(false); // State for Pico IP Edit Modal
-  const [editPicoIp, setEditPicoIp] = useState(''); // State for editing Pico IP
-
-  const openZoneEdit = (idx: number) => {
-    setEditIdx(idx);
-    setEditFlow(userData.zones[idx].flow);
-    setEditBattery(userData.zones[idx].battery);
-    setEditValves([...userData.zones[idx].valves]);
-    setNewValve('');
-    setZoneModalVisible(true);
-  };
-
-  const saveZoneEdit = () => {
-    if (editIdx !== null) {
-      const zones = [...userData.zones];
-      zones[editIdx] = {
-        ...zones[editIdx],
-        flow: editFlow,
-        battery: editBattery,
-        valves: editValves.filter(v => v.trim() !== '')
-      };
-      setUserData({ ...userData, zones });
-    }
-    setZoneModalVisible(false);
-    setEditIdx(null);
-  };
-
-  const openPicoIpEdit = () => {
-    setEditPicoIp(userData.picoIp || ''); // Initialize with current IP or empty string
-    setPicoIpModalVisible(true);
-  };
-
-  const savePicoIpEdit = () => {
-    setUserData({ ...userData, picoIp: editPicoIp });
-    setPicoIpModalVisible(false);
-  };
-
-  const addValve = () => {
-    const val = newValve.trim().toUpperCase();
-    if (val && !editValves.includes(val)) {
-      setEditValves([...editValves, val]);
-      setNewValve('');
-    }
-  };
-
-  const removeValve = (val: string) => {
-    setEditValves(editValves.filter(v => v !== val));
-  };
-
+  const { userData, setUserData } = useUserData();
+  const [password, setPassword] = useState('');
+  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const router = useRouter();
   const styles = createStyles(themeColors);
 
   const handleLogout = () => {
-    setUserData(initialUserData); // Reset user data to initial state
-    router.replace('/'); // Navigate back to the login page
+    setUserData(initialUserData);
+    router.replace('/');
+  };
+
+  const handleEditConfiguration = () => {
+    setPasswordModalVisible(true);
+  };
+
+  const verifyPasswordAndRedirect = () => {
+    // For now, a simple hardcoded password check
+    if (password === '1234') { // Replace with a more secure method in a real app
+      setPasswordModalVisible(false);
+      setPassword('');
+      router.push('/edit-zones-valves'); // Navigate to the new configuration page
+    } else {
+      Alert.alert('Authentication Failed', 'Incorrect password.');
+      setPassword('');
+    }
   };
 
   return (
@@ -80,142 +43,66 @@ const ProfilePage = () => {
             source={require('../../assets/images/profile.png')}
             style={styles.profileImage}
           />
-        <Text style={styles.name}>{userData.name}</Text>
-        <Text style={styles.detail}>{userData.email}</Text>
-        <Text style={styles.detail}>{userData.number}</Text>
+          <Text style={styles.name}>{userData.name}</Text>
+          <Text style={styles.detail}>{userData.email}</Text>
+          <Text style={styles.detail}>{userData.number}</Text>
 
-        <View style={styles.statsSection}>
-          <Text style={styles.statsTitle}>Zone Stats</Text>
-          {userData.zones.map((zone, idx) => (
-            <View key={zone.name} style={styles.zoneBox}>
-              <Text style={styles.zoneName}>{zone.name}</Text>
-              <Pressable
-                style={styles.editIcon}
-                onPress={() => openZoneEdit(idx)}
-                hitSlop={10}
-              >
-                <Icon name="pencil" size={22} color="#2268ad" />
-              </Pressable>
-              <Text style={styles.zoneDetail}>
-                Valves: <Text style={styles.zoneValves}>{zone.valves.join(', ')}</Text>
-              </Text>
-              <Text style={styles.zoneDetail}>Flow: <Text style={styles.zoneValue}>{zone.flow}</Text></Text>
-              <Text style={styles.zoneDetail}>Battery: <Text style={styles.zoneValue}>{zone.battery}</Text></Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Pico IP Section */}
-        <View style={styles.statsSection}>
-          <Text style={styles.statsTitle}>Pico IP</Text>
-          <View style={styles.zoneBox}>
-            <Text style={styles.zoneName}>Current IP: <Text style={styles.zoneValue}>{userData.picoIp || 'Not set'}</Text></Text>
-            <Pressable
-              style={styles.editIcon}
-              onPress={openPicoIpEdit}
-              hitSlop={10}
-            >
-              <Icon name="pencil" size={22} color="#2268ad" />
-            </Pressable>
+          <View style={styles.statsSection}>
+            <Text style={styles.statsTitle}>Zone Stats</Text>
+            {userData.zones.map((zone) => (
+              <View key={zone.name} style={styles.zoneBox}>
+                <Text style={styles.zoneName}>{zone.name}</Text>
+                <Text style={styles.zoneDetail}>
+                  Valves: <Text style={styles.zoneValves}>{zone.valves.join(', ')}</Text>
+                </Text>
+                <Text style={styles.zoneDetail}>Flow: <Text style={styles.zoneValue}>{zone.flow}</Text></Text>
+                <Text style={styles.zoneDetail}>Battery: <Text style={styles.zoneValue}>{zone.battery}</Text></Text>
+              </View>
+            ))}
           </View>
+
+          {/* Pico IP Section */}
+          <View style={styles.statsSection}>
+            <Text style={styles.statsTitle}>Pico IP</Text>
+            <View style={styles.zoneBox}>
+              <Text style={styles.zoneName}>Current IP: <Text style={styles.zoneValue}>{userData.picoIp || 'Not set'}</Text></Text>
+            </View>
+          </View>
+
+          {/* New Edit Configuration Button */}
+          <TouchableOpacity style={styles.editConfigButton} onPress={handleEditConfiguration}>
+            <Text style={styles.editConfigButtonText}>Edit Configuration</Text>
+          </TouchableOpacity>
+
+          {/* <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Text style={styles.logoutButtonText}>Logout</Text>
+          </TouchableOpacity> */}
         </View>
+      </ScrollView>
 
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutButtonText}>Logout</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
-
-      {/* Zone Edit Modal */}
+      {/* Password Entry Modal */}
       <Modal
-        visible={zoneModalVisible}
+        visible={passwordModalVisible}
         transparent
         animationType="slide"
-        onRequestClose={() => setZoneModalVisible(false)}
+        onRequestClose={() => setPasswordModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>Edit Zone Values</Text>
-            <Text style={styles.inputLabel}>Flow:</Text>
+            <Text style={styles.modalTitle}>Enter Password to Edit</Text>
             <TextInput
               style={styles.input}
-              value={editFlow}
-              onChangeText={setEditFlow}
-              placeholder="Flow"
-              autoCapitalize='characters'
-              maxLength={1}
-            />
-            <Text style={styles.inputLabel}>Battery:</Text>
-            <TextInput
-              style={styles.input}
-              value={editBattery}
-              onChangeText={setEditBattery}
-              placeholder="Battery"
-            />
-            <Text style={[styles.zoneDetail, { marginTop: 8, marginBottom: 4 }]}>Valves:</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-              <TextInput
-                style={[styles.input, { flex: 1, marginBottom: 0 }]}
-                value={newValve}
-                onChangeText={setNewValve}
-                placeholder="Add valve (e.g. X)"
-                autoCapitalize="characters"
-                maxLength={2}
-              />
-              <Pressable style={styles.addValveBtn} onPress={addValve}>
-                <Icon name="plus-circle" size={26} color="#4caf50" />
-              </Pressable>
-            </View>
-            <FlatList
-              data={editValves}
-              keyExtractor={item => item}
-              horizontal
-              renderItem={({ item }) => (
-                <View style={styles.valveChip}>
-                  <Text style={{ color: '#2268ad', fontWeight: 'bold' }}>{item}</Text>
-                  <Pressable onPress={() => removeValve(item)} hitSlop={10}>
-                    <Icon name="close-circle" size={18} color="#e53935" style={{ marginLeft: 2 }} />
-                  </Pressable>
-                </View>
-              )}
-              contentContainerStyle={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 }}
-              showsHorizontalScrollIndicator={false}
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Password"
+              secureTextEntry
             />
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 16 }}>
-              <Pressable style={styles.modalBtn} onPress={() => setZoneModalVisible(false)}>
+              <Pressable style={styles.modalBtn} onPress={() => setPasswordModalVisible(false)}>
                 <Text style={{ color: '#2268ad', fontWeight: 'bold' }}>Cancel</Text>
               </Pressable>
-              <Pressable style={[styles.modalBtn, { marginLeft: 12 }]} onPress={saveZoneEdit}>
-                <Text style={{ color: '#4caf50', fontWeight: 'bold' }}>Save</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Pico IP Edit Modal */}
-      <Modal
-        visible={picoIpModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setPicoIpModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>Edit Pico IP</Text>
-            <TextInput
-              style={styles.input}
-              value={editPicoIp}
-              onChangeText={setEditPicoIp}
-              placeholder="Enter Pico IP Address"
-              keyboardType="numeric"
-            />
-            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 16 }}>
-              <Pressable style={styles.modalBtn} onPress={() => setPicoIpModalVisible(false)}>
-                <Text style={{ color: '#2268ad', fontWeight: 'bold' }}>Cancel</Text>
-              </Pressable>
-              <Pressable style={[styles.modalBtn, { marginLeft: 12 }]} onPress={savePicoIpEdit}>
-                <Text style={{ color: '#4caf50', fontWeight: 'bold' }}>Save</Text>
+              <Pressable style={[styles.modalBtn, { marginLeft: 12 }]} onPress={verifyPasswordAndRedirect}>
+                <Text style={{ color: '#4caf50', fontWeight: 'bold' }}>Verify</Text>
               </Pressable>
             </View>
           </View>
@@ -235,7 +122,7 @@ const createStyles = (themeColors: (typeof Colors.light) & { contentBackground?:
   scrollContent: {
     flexGrow: 1,
     paddingTop: 60,
-    paddingBottom: 80, // Add padding for the bottom menu bar
+    paddingBottom: 80,
   },
   profileContainer: {
     alignItems: 'center',
@@ -289,13 +176,6 @@ const createStyles = (themeColors: (typeof Colors.light) & { contentBackground?:
     color: themeColors.text,
     marginBottom: 4,
   },
-  editIcon: {
-    position: 'absolute',
-    right: 10,
-    top: 10,
-    padding: 4,
-    zIndex: 2,
-  },
   zoneDetail: {
     fontSize: 14,
     color: themeColors.text,
@@ -307,11 +187,6 @@ const createStyles = (themeColors: (typeof Colors.light) & { contentBackground?:
   },
   zoneValue: {
     color: '#4caf50',
-    fontWeight: '600',
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 16,
     fontWeight: '600',
   },
   modalOverlay: {
@@ -344,33 +219,12 @@ const createStyles = (themeColors: (typeof Colors.light) & { contentBackground?:
     backgroundColor: themeColors.background,
     color: themeColors.text,
   },
-  inputLabel: {
-    fontSize: 14,
-    color: themeColors.text,
-    marginBottom: 4,
-    marginTop: 8,
-    fontWeight: 'bold',
-  },
-  addValveBtn: {
-    marginLeft: 8,
-    padding: 2,
-  },
-  valveChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: themeColors.tint,
-    borderRadius: 16,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    marginRight: 6,
-    marginBottom: 6,
-  },
   modalBtn: {
     paddingVertical: 8,
     paddingHorizontal: 18,
   },
   logoutButton: {
-    backgroundColor: '#e53935', // Red color for logout
+    backgroundColor: '#e53935',
     paddingVertical: 12,
     paddingHorizontal: 25,
     borderRadius: 12,
@@ -379,6 +233,20 @@ const createStyles = (themeColors: (typeof Colors.light) & { contentBackground?:
     alignItems: 'center',
   },
   logoutButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 18,
+  },
+  editConfigButton: {
+    backgroundColor: '#2563eb',
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 12,
+    marginTop: 20,
+    width: '80%',
+    alignItems: 'center',
+  },
+  editConfigButtonText: {
     color: '#fff',
     fontWeight: '600',
     fontSize: 18,
