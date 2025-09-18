@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const initialUserData = {
   name: "John Doe",
@@ -33,6 +34,32 @@ const UserDataContext = createContext<{
 
 export const UserDataProvider = ({ children }: { children: React.ReactNode }) => {
   const [userData, setUserData] = useState(initialUserData);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const storedData = await AsyncStorage.getItem('userData');
+        if (storedData) {
+          setUserData(JSON.parse(storedData));
+        }
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      }
+    };
+    loadData();
+  }, []);
+
+  useEffect(() => {
+    const saveData = async () => {
+      try {
+        await AsyncStorage.setItem('userData', JSON.stringify(userData));
+      } catch (error) {
+        console.error('Error saving user data:', error);
+      }
+    };
+    saveData();
+  }, [userData]);
+
   return (
     <UserDataContext.Provider value={{ userData, setUserData }}>
       {children}

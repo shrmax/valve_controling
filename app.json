@@ -4,7 +4,7 @@
     "slug": "valve_controling",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/splash-icon.png",
+    "icon": "./assets/images/adaptive-icon.png",
     "scheme": "valvecontroling",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
