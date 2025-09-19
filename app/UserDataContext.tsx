@@ -38,9 +38,14 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
   useEffect(() => {
     const loadData = async () => {
       try {
+        console.log('Attempting to load user data from AsyncStorage...');
         const storedData = await AsyncStorage.getItem('userData');
         if (storedData) {
-          setUserData(JSON.parse(storedData));
+          const parsedData = JSON.parse(storedData);
+          console.log('User data loaded successfully:', parsedData);
+          setUserData(parsedData);
+        } else {
+          console.log('No user data found in AsyncStorage. Using initial data.');
         }
       } catch (error) {
         console.error('Error loading user data:', error);
@@ -52,7 +57,9 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
   useEffect(() => {
     const saveData = async () => {
       try {
+        console.log('Attempting to save user data to AsyncStorage:', userData);
         await AsyncStorage.setItem('userData', JSON.stringify(userData));
+        console.log('User data saved successfully.');
       } catch (error) {
         console.error('Error saving user data:', error);
       }
