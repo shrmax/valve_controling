@@ -4,7 +4,7 @@
     "slug": "valve_controling",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/splash-icon-Photoroom.png",
+    "icon": "./assets/images/icon2.png",
     "scheme": "valvecontroling",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -13,7 +13,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/splash-icon-Photoroom.png",
+        "foregroundImage": "./assets/images/icon2.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
@@ -29,7 +29,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon-Photoroom.png",
+          "image": "./assets/images/icon2.png",
           "resizeMode": "contain",
           "backgroundColor": "#2DDAD7"
         }
