@@ -1,6 +1,18 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Alert } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SQLite from 'expo-sqlite';
+
+const db: any = SQLite.openDatabaseSync('user.db');
+
+const initDatabase = () => {
+  db.transaction((tx: any) => {
+    tx.executeSql(
+      'CREATE TABLE IF NOT EXISTS userData (id INTEGER PRIMARY KEY NOT NULL, data TEXT NOT NULL);',
+      [],
+      () => console.log('User data table created or already exists.'),
+      (_: any, error: any) => console.error('Error creating user data table:', error)
+    );
+  });
+};
 
 export const initialUserData = {
   name: "John Doe",
@@ -37,35 +49,45 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
   const [userData, setUserData] = useState(initialUserData);
 
   useEffect(() => {
+    initDatabase();
     const loadData = async () => {
-      try {
-        Alert.alert('UserDataContext', 'Attempting to load user data from AsyncStorage...');
-        const storedData = await AsyncStorage.getItem('userData');
-        if (storedData) {
-          const parsedData = JSON.parse(storedData);
-          Alert.alert('UserDataContext', 'User data loaded successfully.');
-          setUserData(parsedData);
-        } else {
-          Alert.alert('UserDataContext', 'No user data found in AsyncStorage. Using initial data.');
-        }
-      } catch (error) {
-        Alert.alert('UserDataContext Error', `Error loading user data: ${error}`);
-        console.error('Error loading user data:', error);
-      }
+      db.transaction((tx: any) => {
+        tx.executeSql(
+          'SELECT * FROM userData WHERE id = 1;',
+          [],
+          (_: any, { rows }: any) => {
+            if (rows.length > 0) {
+              const parsedData = JSON.parse(rows._array[0].data);
+              setUserData(parsedData);
+              console.log('User data loaded successfully from SQLite.');
+            } else {
+              console.log('No user data found in SQLite. Inserting initial data.');
+              tx.executeSql(
+                'INSERT INTO userData (id, data) VALUES (1, ?);',
+                [JSON.stringify(initialUserData)],
+                () => setUserData(initialUserData),
+                (_: any, error: any) => console.error('Error inserting initial user data:', error)
+              );
+            }
+          },
+          (_: any, error: any) => console.error('Error loading user data from SQLite:', error)
+        );
+      });
     };
     loadData();
   }, []);
 
   useEffect(() => {
+    initDatabase();
     const saveData = async () => {
-      try {
-        Alert.alert('UserDataContext', 'Attempting to save user data to AsyncStorage.');
-        await AsyncStorage.setItem('userData', JSON.stringify(userData));
-        Alert.alert('UserDataContext', 'User data saved successfully.');
-      } catch (error) {
-        Alert.alert('UserDataContext Error', `Error saving user data: ${error}`);
-        console.error('Error saving user data:', error);
-      }
+      db.transaction((tx: any) => {
+        tx.executeSql(
+          'INSERT OR REPLACE INTO userData (id, data) VALUES (1, ?);',
+          [JSON.stringify(userData)],
+          () => console.log('User data saved successfully to SQLite.'),
+          (_: any, error: any) => console.error('Error saving user data to SQLite:', error)
+        );
+      });
     };
     saveData();
   }, [userData]);
