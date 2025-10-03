@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
-import { useUserData } from './UserDataContext';
-import { initialUserData } from './UserDataContext';
+import { useUserData } from './_UserDataContext';
+import { initialUserData } from './_UserDataContext';
 
 export default function Index() {
   const router = useRouter();

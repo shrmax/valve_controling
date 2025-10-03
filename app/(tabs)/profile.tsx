@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Image, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, useColorScheme, View, TouchableOpacity, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useUserData, initialUserData } from '../UserDataContext';
+import { useUserData, initialUserData } from '../_UserDataContext';
 import { Colors } from '../../constants/Colors';
 import { useRouter } from 'expo-router';
 
