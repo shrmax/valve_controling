@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const USER_DATA_KEY = 'userData';
@@ -36,6 +36,7 @@ const UserDataContext = createContext<{
 
 export const UserDataProvider = ({ children }: { children: React.ReactNode }) => {
   const [userData, setUserData] = useState(initialUserData);
+  const isLoaded = useRef(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -51,6 +52,8 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
         }
       } catch (error) {
         console.error('Error loading user data from AsyncStorage:', error);
+      } finally {
+        isLoaded.current = true;
       }
     };
     loadData();
@@ -58,6 +61,7 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
 
   useEffect(() => {
     const saveData = async () => {
+      if (!isLoaded.current) return; // Don't save until initial load is done
       try {
         await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(userData));
         console.log('User data saved successfully to AsyncStorage.');
