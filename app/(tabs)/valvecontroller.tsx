@@ -21,7 +21,10 @@ import { Colors } from '../../constants/Colors';
 const ValveController = () => {
   const colorScheme = useColorScheme();
   const themeColors = Colors[colorScheme ?? 'light'];
-  const { userData } = useUserData();
+  const { userData, setUserData } = useUserData();
+
+  const isPumpOn = userData.pumpState;
+  const valveStates: Record<string, boolean> = userData.valveStates || {};
 
   // Build zoneMap from userData
   const zoneMap: Record<string, string[]> = {};
@@ -33,13 +36,11 @@ const ValveController = () => {
   const selectedZoneData = userData.zones.find(z => z.name === selectedZone);
 
   const valves = zoneMap[selectedZone] || [];
-  const [valveStates, setValveStates] = useState<Record<string, boolean>>({});
   const [logs, setLogs] = useState<string[]>([]);
   const [flowValue, setFlowValue] = useState<string>("--");
   const [batteryValue, setBatteryValue] = useState<string>("--");
   const [isRefreshingFlow, setIsRefreshingFlow] = useState<boolean>(false);
   const [isRefreshingBattery, setIsRefreshingBattery] = useState<boolean>(false);
-  const [isPumpOn, setIsPumpOn] = useState<boolean>(false);
   const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
 
   // Convert hex string to ASCII symbols (for valve IDs)
@@ -108,7 +109,10 @@ const ValveController = () => {
 
     // Check if the response matches the expected command
     if (ress === command) {
-      setValveStates(prev => ({ ...prev, [valve]: state }));
+      setUserData(prev => ({
+        ...prev,
+        valveStates: { ...prev.valveStates, [valve]: state }
+      }));
       ToastAndroid.showWithGravityAndOffset(
         `Valve ${valve} turned ${state ? 'ON' : 'OFF'}`,
         ToastAndroid.LONG,
@@ -150,7 +154,7 @@ const ValveController = () => {
 
             // Check if the response matches the expected command
             if (ress === command) {
-              setIsPumpOn(newState);
+              setUserData(prev => ({ ...prev, pumpState: newState }));
               ToastAndroid.showWithGravityAndOffset(
                 `Pump turned ${newState ? 'ON' : 'OFF'}`,
                 ToastAndroid.LONG,

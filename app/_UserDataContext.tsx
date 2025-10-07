@@ -7,7 +7,7 @@ export const initialUserData = {
   name: "John Doe",
   email: "john.doe@example.com",
   number: "+1 234 567 890",
-  picoIp: "192.168.1.100", // Default IP for testing
+  picoIp: "192.168.1.100",
   zones: [
     {
       name: "Ganapathi",
@@ -21,7 +21,9 @@ export const initialUserData = {
       flow: "F",      // command to get flow
       battery: "B"    // command to get battery
     }
-  ]
+  ],
+  pumpState: false, // false = off, true = on
+  valveStates: {},  // e.g., { "A": false, "B": true }
 };
 
 type UserDataType = typeof initialUserData;
@@ -43,12 +45,17 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
       try {
         const storedData = await AsyncStorage.getItem(USER_DATA_KEY);
         if (storedData) {
-          setUserData(JSON.parse(storedData));
+          const parsedData = JSON.parse(storedData);
+          setUserData(parsedData);
           console.log('User data loaded successfully from AsyncStorage.');
+          console.log('Pump state:', parsedData.pumpState);
+          console.log('Valve states:', parsedData.valveStates);
         } else {
           await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(initialUserData));
           setUserData(initialUserData);
           console.log('No user data found in AsyncStorage. Inserting initial data.');
+          console.log('Pump state:', initialUserData.pumpState);
+          console.log('Valve states:', initialUserData.valveStates);
         }
       } catch (error) {
         console.error('Error loading user data from AsyncStorage:', error);
@@ -78,5 +85,15 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
     </UserDataContext.Provider>
   );
 };
+export const updatePicoIp = (newIp: string) => {
+  const { userData, setUserData } = useUserData();
+  setUserData({ ...userData, picoIp: newIp });
+};
+
 
 export const useUserData = () => useContext(UserDataContext);
+
+// Example function to update picoIp
+
+
+// To toggle pump
