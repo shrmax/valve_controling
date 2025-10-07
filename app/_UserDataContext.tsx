@@ -7,7 +7,7 @@ export const initialUserData = {
   name: "John Doe",
   email: "john.doe@example.com",
   number: "+1 234 567 890",
-  picoIp: "192.168.1.100",
+  picoIp: "192.168.4.1",
   zones: [
     {
       name: "Ganapathi",
