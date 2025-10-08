@@ -185,7 +185,14 @@ const ValveController = () => {
     try {
       const flowCmd = selectedZoneData?.flow || "F";
       const flowRes = await sendToPicoW(flowCmd, "flow");
-      setFlowValue(flowRes || "--");
+      // setFlowValue(flowRes || "--");
+
+      if (flowRes && flowRes !== '--' && !isNaN(parseFloat(flowRes))) {
+        const formatted = `${(parseFloat(flowRes) / 10).toFixed(1)} L/s`;
+        setFlowValue(formatted);
+      } else {
+        setFlowValue("--");
+      }
     } catch {
       setLogs(prev => [`❌ Flow refresh failed`, ...prev]);
     }
@@ -197,7 +204,13 @@ const ValveController = () => {
     try {
       const batteryCmd = selectedZoneData?.battery || "B";
       const batteryRes = await sendToPicoW(batteryCmd, "flow");
-      setBatteryValue(batteryRes || "--");
+     
+      if (batteryRes && batteryRes !== '--' && !isNaN(parseFloat(batteryRes))) {
+        const formatted = `${batteryRes}%`;
+        setBatteryValue(formatted);
+      } else {
+        setBatteryValue("--");
+      }
     } catch {
       setLogs(prev => [`❌ Battery refresh failed`, ...prev]);
     }

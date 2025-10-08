@@ -46,16 +46,15 @@ export const UserDataProvider = ({ children }: { children: React.ReactNode }) =>
         const storedData = await AsyncStorage.getItem(USER_DATA_KEY);
         if (storedData) {
           const parsedData = JSON.parse(storedData);
-          setUserData(parsedData);
-          console.log('User data loaded successfully from AsyncStorage.');
-          console.log('Pump state:', parsedData.pumpState);
-          console.log('Valve states:', parsedData.valveStates);
+          // Merge stored data with initial data to avoid missing fields
+          const mergedData = { ...initialUserData, ...parsedData };
+          setUserData(mergedData);
+          console.log('User data loaded and merged successfully from AsyncStorage.');
         } else {
+          // If no data is stored, save the initial data
           await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(initialUserData));
           setUserData(initialUserData);
-          console.log('No user data found in AsyncStorage. Inserting initial data.');
-          console.log('Pump state:', initialUserData.pumpState);
-          console.log('Valve states:', initialUserData.valveStates);
+          console.log('No user data found in AsyncStorage. Initializing with default data.');
         }
       } catch (error) {
         console.error('Error loading user data from AsyncStorage:', error);

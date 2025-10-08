@@ -140,7 +140,7 @@ export default function EditZonesValvesPage() {
             placeholderTextColor="#999"
             value={picoIp}
             onChangeText={setPicoIp}
-            keyboardType="numeric"
+            keyboardType="default"
           />
         </View>
 
